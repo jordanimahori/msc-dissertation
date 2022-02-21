@@ -9,8 +9,7 @@ rm(list = ls())
 setwd("~/Projects/Dissertation/agro-welfare")
 
 library(tidyverse)
-library(jsonlite)
-
+library(sf)
 
 # ---------------------- DATA ----------------------
 
@@ -19,65 +18,48 @@ library(jsonlite)
 
 
 # Tabular data on land acquisitions. (Source: LandMatrix) 
-contracts_tabular <- read_delim("./Data/Original/contracts.csv")
-deals_tabular <- read_delim("./Data/Original/deals.csv")                    #(1)
-investors_tabular <- read_delim("./Data/Original/investors.csv")
-involvements_tabular <- read_delim("./Data/Original/involvements.csv")
-locations_tabular <- read_delim("./Data/Original/locations.csv")
+filepaths = list.files("./Data/Original/", pattern=".csv")
+datasets = list()
+
+for (file in filepaths) {
+  datasets[[gsub(".csv", "", file)]] <- read_delim(paste("Data/Original/", file, sep=""))   #(1)
+}
 
 
 # Spatial data on land acquisitions. (Source: LandMatrix)
-locations_spatial <- fromJSON("./Data/Original/locations.geojson")
-areas_spatial <- fromJSON("./Data/Original/areas.geojson")
-
+locations_spatial <- st_read("./Data/Original/locations.geojson")
+areas_spatial <- st_read("./Data/Original/areas.geojson")
 
 
 
 # -------------------- CLEANING -------------------------
 
-# Switch column names to lowercase and replace spaces with underscores.
-colnames(contracts_tabular) <- gsub(" ", "_", tolower(colnames(contracts_tabular)))
-colnames(deals_tabular) <- gsub(" ", "_", tolower(colnames(deals_tabular)))
-colnames(investors_tabular) <- gsub(" ", "_", tolower(colnames(investors_tabular)))
-colnames(involvements_tabular) <- gsub(" ", "_", tolower(colnames(involvements_tabular)))
-colnames(locations_tabular) <- gsub(" ", "_", tolower(colnames(locations_tabular)))
+# Drop vars with majority missing observations & rename for easier referencing
+for (i in 1:length(datasets)) {
+  datasets[[i]] <- datasets[[i]] %>%
+    select(where(~ mean(map_lgl(.x, is.na)) < 0.3)) %>%   # most vars are majority NA
+    rename_with(tolower) %>%
+    rename_with(~ gsub(" ", "_", .x)) %>%
+    rename_with(~ gsub(":", "", .x)) %>%
+    rename_with(~ gsub("_\\(.{1,}\\)", "", .x))
+}
 
+# Dropping additional irrelevant variables & renaming for consistency
+datasets$deals <- datasets$deals %>%          
+  select(!c("is_public", "not_public")) %>%
+  rename("investor_id"="operating_company_investor_id")
 
+colnames(datasets$investors) <- paste("investor_", colnames(datasets$investors), sep="")
+datasets$investors <- rename(datasets$investors, "investor_id"="investor_investor_id", "investor_country_of_registration"="investor_country_of_registration/origin")
 
-# ------------------- VALIDATION ------------------------
+# Merging
+lsla <- datasets$deals %>%
+  left_join(datasets$contracts, by = "deal_id") %>%
+  left_join(datasets$investors, by = "investor_id") %>%
+  left_join(datasets$locations, by = "deal_id")
 
-# NOTES: The original LandMatrix files have a considerable (~335) number of 
-# duplicates in them.  
-
-
-# Extracting the properties table from the GeoJSON.
-compare_locations <- locations_spatial$features$properties
-
-
-# Checking for Deal IDs that appear in only the tabular or spatial files. 
-# IDs 3117 and 7648 appear only in the tabular data.
-# There are no IDs which appear only in the spatial data.
-
-sum(is.na(match(locations_tabular$deal_id, compare_locations$deal_id))) 
-
-locations_tabular %>% 
-  filter(!(locations_tabular$deal_id %in% compare_locations$deal_id)) 
-
-compare_locations %>%
-  filter(!(compare_locations$deal_id %in% locations_tabular$deal_id))
-
-
-# Checking for duplicated IDs in tabular data (not checking spatial since subset).
-# There are 175 IDs which have duplicates, and 510 entries matching those IDs. 
-# Correspondingly, there are 335 "extra" observations. As a sanity check, 
-# 1965 - 335 = 1630, which is the number of (unique) deals we have in our deals data. 
-duplicated_ids <- unique(locations_tabular$deal_id[duplicated(locations_tabular$deal_id)])
-entries_for_duplicated_ids <- locations_tabular %>% 
-  filter(locations_tabular$deal_id %in% duplicated_ids)
-
-# Creating CSV of duplicated entries to send to LandMatrix
-write_csv(entries_for_duplicated_ids, "duplicated_entries.csv")
-
+# Dropping intermediate objects
+rm(datasets)
 
 
 
