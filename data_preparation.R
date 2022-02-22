@@ -4,18 +4,20 @@
 
 # See end of document for footnotes. 
 
-# -------------------- ENVIRONMENT -----------------------
+# ----------------------------- ENVIRONMENT ----------------------------
 rm(list = ls())
 setwd("~/Projects/Dissertation/agro-welfare")
 
-library(tidyverse)
+library(dplyr)
+library(magrittr)
 library(sf)
 
-# ---------------------- DATA ----------------------
+
+
+# -------------------------------- DATA --------------------------------
 
 # NOTES: The original files from the LandMatrix don't read into R very well. I 
 # first opened them in Numbers and re-exported as a CSV. 
-
 
 # Tabular data on land acquisitions. (Source: LandMatrix) 
 filepaths = list.files("./Data/Original/", pattern=".csv")
@@ -25,14 +27,13 @@ for (file in filepaths) {
   datasets[[gsub(".csv", "", file)]] <- read_delim(paste("Data/Original/", file, sep=""))   #(1)
 }
 
-
-# Spatial data on land acquisitions. (Source: LandMatrix)
-locations_spatial <- st_read("./Data/Original/locations.geojson")
-areas_spatial <- st_read("./Data/Original/areas.geojson")
-
+# GeoJSON data on land acquisitions. (Source: LandMatrix)
+locations_sp <- st_read("./Data/Original/locations.geojson")
+areas_sp <- st_read("./Data/Original/areas.geojson")
 
 
-# -------------------- CLEANING -------------------------
+
+# ------------------------- CLEAN TABULAR DATA  -------------------------
 
 # Drop vars with majority missing observations & rename for easier referencing
 for (i in 1:length(datasets)) {
@@ -52,7 +53,7 @@ datasets$deals <- datasets$deals %>%
 colnames(datasets$investors) <- paste("investor_", colnames(datasets$investors), sep="")
 datasets$investors <- rename(datasets$investors, "investor_id"="investor_investor_id", "investor_country_of_registration"="investor_country_of_registration/origin")
 
-# Merging
+# Merging Tabular LandMatrix files
 lsla <- datasets$deals %>%
   left_join(datasets$contracts, by = "deal_id") %>%
   left_join(datasets$investors, by = "investor_id") %>%
@@ -61,9 +62,22 @@ lsla <- datasets$deals %>%
 # Dropping intermediate objects
 rm(datasets)
 
+# Saving file for later use
+saveRDS(lsla, file="./Data/lsla.R")
 
 
-# ------------------ FOOTNOTES ------------------------
+
+
+# ---------------------- CLEAN GEOJSON DATA ----------------------------
+
+
+
+
+
+saveRDS(areas_sp, "./Data/areas_sp.R")
+saveRDS(locations_sp, "./Data/locations_sp.R")
+
+# ---------------------------- FOOTNOTES -------------------------------
 
 # (1) Some problems with data consistency in unused variables. 
 # See: problems(deals_tabular)
