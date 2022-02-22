@@ -8,8 +8,7 @@
 rm(list = ls())
 setwd("~/Projects/Dissertation/agro-welfare")
 
-library(dplyr)
-library(magrittr)
+library(tidyverse)
 library(sf)
 
 
@@ -45,24 +44,38 @@ for (i in 1:length(datasets)) {
     rename_with(~ gsub("_\\(.{1,}\\)", "", .x))
 }
 
-# Dropping additional irrelevant variables & renaming for consistency
+
+# Drop additional irrelevant variables & renaming for consistency
 datasets$deals <- datasets$deals %>%          
   select(!c("is_public", "not_public")) %>%
   rename("investor_id"="operating_company_investor_id")
 
 colnames(datasets$investors) <- paste("investor_", colnames(datasets$investors), sep="")
-datasets$investors <- rename(datasets$investors, "investor_id"="investor_investor_id", "investor_country_of_registration"="investor_country_of_registration/origin")
 
-# Merging Tabular LandMatrix files
+datasets$investors <- datasets$investors %>%
+  rename("investor_id"="investor_investor_id", "investor_country_of_registration"="investor_country_of_registration/origin")
+
+datasets$locations <- datasets$locations %>%
+  separate(col=point, into=c("lat", "lon"), sep=",", remove=TRUE, convert=TRUE)
+
+# Merge Tabular LandMatrix files
 lsla <- datasets$deals %>%
   left_join(datasets$contracts, by = "deal_id") %>%
   left_join(datasets$investors, by = "investor_id") %>%
   left_join(datasets$locations, by = "deal_id")
+  
+# Drop observations missing a location, or where spatial accuracy is not precise
+lsla <- lsla %>%
+  filter(!(is.na(lsla$lat) | is.na(lsla$lon))) %>%     # five observations were missing coordinates
+  filter(!(spatial_accuracy_level %in% c("Administrative region", "Country", NA))) # 1273 obs are imprecise, 1 is NA 
 
-# Dropping intermediate objects
+# Convert to sf object
+lsla <- st_as_sf(lsla, coords=c("lon", "lat"), crs=4326, na.fail=FALSE)
+
+# Drop intermediate objects
 rm(datasets)
 
-# Saving file for later use
+# Save file for later use
 saveRDS(lsla, file="./Data/lsla.R")
 
 
@@ -70,12 +83,18 @@ saveRDS(lsla, file="./Data/lsla.R")
 
 # ---------------------- CLEAN GEOJSON DATA ----------------------------
 
+# Drop observations for which spatial accuracy is low
+locations_sp <- locations_sp %>%
+  filter(!(spatial_accuracy %in% c("ADMINISTRATIVE_REGION", "COUNTRY", "")))
 
 
 
 
+# Save as RDS
 saveRDS(areas_sp, "./Data/areas_sp.R")
 saveRDS(locations_sp, "./Data/locations_sp.R")
+
+
 
 # ---------------------------- FOOTNOTES -------------------------------
 
