@@ -9,6 +9,7 @@ rm(list = ls())
 setwd("~/Projects/Dissertation/agro-welfare")
 
 library(tidyverse)
+library(lubridate)
 library(sf)
 
 
@@ -23,12 +24,13 @@ filepaths = list.files("./Data/Original/", pattern=".csv")
 datasets = list()
 
 for (file in filepaths) {
-  datasets[[gsub(".csv", "", file)]] <- read_delim(paste("Data/Original/", file, sep=""))   #(1)
+  datasets[[gsub(".csv", "", file)]] <- read_delim(paste("Data/Original/", file, sep=""), 
+                                                   show_col_types=FALSE)   #(1)
 }
 
 # GeoJSON data on land acquisitions. (Source: LandMatrix)
-locations_sp <- st_read("./Data/Original/locations.geojson")
-areas_sp <- st_read("./Data/Original/areas.geojson")
+locations <- st_read("./Data/Original/locations.geojson", quiet=TRUE)
+areas <- st_read("./Data/Original/areas.geojson", quiet=TRUE)
 
 
 
@@ -47,8 +49,9 @@ for (i in 1:length(datasets)) {
 
 # Drop additional irrelevant variables & renaming for consistency
 datasets$deals <- datasets$deals %>%          
-  select(!c("is_public", "not_public")) %>%
-  rename("investor_id"="operating_company_investor_id")
+  select(!c("is_public", "not_public", "size_under_contract")) %>%
+  rename("investor_id"="operating_company_investor_id","size_under_contract"="current_size_under_contract", 
+         "size_in_operation"="current_size_in_operation")
 
 colnames(datasets$investors) <- paste("investor_", colnames(datasets$investors), sep="")
 
@@ -69,36 +72,83 @@ lsla <- lsla %>%
   filter(!(is.na(lsla$lat) | is.na(lsla$lon))) %>%     # five observations were missing coordinates
   filter(!(spatial_accuracy_level %in% c("Administrative region", "Country", NA))) # 1273 obs are imprecise, 1 is NA 
 
-# Convert to sf object
-lsla <- st_as_sf(lsla, coords=c("lon", "lat"), crs=4326, na.fail=FALSE)
+# Fix formats
+lsla$deal_id <- as.integer(lsla$deal_id)
+
+
+# Extracting year of contract signing
+lsla <- lsla %>%
+  separate(col=negotiation_status, into=c("split_neg_status", "r_neg_status"), 
+           sep='#current#') %>%
+  separate(col=implementation_status, into=c("split_imp_status", "r_imp_status"), 
+           sep='#current#')
+  
+
+lsla$year_signed <- lsla$split_neg_status %>%                 # NOT EXACTLY. THIS IS JUST YEAR OF LAST STATUS CHANGE
+  str_extract(pattern="[0-9-]{4,10}$") %>%
+  ymd(truncated=2) %>%
+  year()
+
+lsla$year_implemented <- lsla$split_imp_status %>%            # NOT EXACTLY. THIS IS JUST THE DATE OF LATE STATUS CHANGE
+  str_extract(pattern="[0-9-]{4,10}$") %>%
+  ymd(truncated=2) %>%
+  year()
+
+
+
 
 # Drop intermediate objects
-rm(datasets)
+rm(datasets, file, filepaths)
 
-# Save file for later use
-saveRDS(lsla, file="./Data/lsla.R")
-
-
+### HACKY TEMPORARY SOLUTION TO DUPLICATES PROBLEM
+lsla <- distinct(lsla, deal_id, .keep_all=TRUE)
 
 
 # ---------------------- CLEAN GEOJSON DATA ----------------------------
 
-# Drop observations for which spatial accuracy is low
-locations_sp <- locations_sp %>%
+# Drop observations where spatial accuracy is low
+locations <- locations %>%
   filter(!(spatial_accuracy %in% c("ADMINISTRATIVE_REGION", "COUNTRY", "")))
 
+# Convert deal_id to integer
+locations$deal_id <- as.integer(locations$deal_id)
+
+# Merge in additional deal data from tabular files
+areas <- areas %>%
+  select(c(id, name, type, deal_id, country, region)) %>%
+  left_join(lsla, by="deal_id")
+
+locations <- locations %>%
+  left_join(lsla, by="deal_id")
 
 
+### HACKY SOLUTION WHILE I WAIT TO SOLVE DUPLICATES PROBLEM
+locations <- distinct(locations, deal_id, .keep_all=TRUE)
 
-# Save as RDS
-saveRDS(areas_sp, "./Data/areas_sp.R")
-saveRDS(locations_sp, "./Data/locations_sp.R")
 
+# ------------------------------ SAVE ---------------------------------
+
+# Convert to sf object
+lsla <- st_as_sf(lsla, coords=c("lon", "lat"), crs=4326)
+
+# Save files for later use
+saveRDS(lsla, file="./Data/lsla.RData")
+saveRDS(locations, file="./Data/locations.RData")
+saveRDS(areas, file="./Data/locations.RData")
 
 
 # ---------------------------- FOOTNOTES -------------------------------
 
 # (1) Some problems with data consistency in unused variables. 
 # See: problems(deals_tabular)
+
+
+# The GeoJSON and CVS files contain the same observations, but the number of 
+# duplicates in each is different, which results in a different number of 
+# observations.
+
+# There are duplicates in the areas as well, but that's more complicated to 
+# deal with. There are 190 distinct entries.
+
 
 
