@@ -134,7 +134,7 @@ lsla <- st_as_sf(lsla, coords=c("lon", "lat"), crs=4326)
 # Save files for later use
 saveRDS(lsla, file="./Data/lsla.RData")
 saveRDS(locations, file="./Data/locations.RData")
-saveRDS(areas, file="./Data/locations.RData")
+saveRDS(areas, file="./Data/areas.RData")
 
 
 # ---------------------------- FOOTNOTES -------------------------------
