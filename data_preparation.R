@@ -58,8 +58,7 @@ for (i in 1:length(datasets)) {
 
 # Drop additional irrelevant variables & rename for consistency
 datasets$deals <- datasets$deals %>%          
-  select(!c(is_public, not_public, size_under_contract,
-            comment_on_land_area, `crops_area/yield/export`)) %>%
+  select(!c(is_public, not_public, size_under_contract,comment_on_land_area)) %>%
   rename(investor_id=operating_company_investor_id,
          size_under_contract=current_size_under_contract, 
          size_in_operation=current_size_in_operation)
@@ -164,11 +163,40 @@ lsla$investment_type <- lsla$intention_of_investment %>%
 lsla$crop_type <- lsla$`crops_area/yield/export` %>%
   str_extract(pattern="[A-Za-z-\\(\\) ,/]{1,}$")
 
+lsla$investment_type <- replace_na(lsla$investment_type, "Other")
+
+
+# Group investment types into broader categories
+for (i in 1:length(lsla$investment_type)) {
+  candidate <- lsla$investment_type[i]
+  if (str_detect(candidate, pattern="(Food crops)|(Agriculture)")) {
+    lsla$investment_type[i] <- "Food"
+  } else if (str_detect(candidate, pattern = "Non-food")) {
+    lsla$investment_type[i] <- "Non-food"
+  } else if (str_detect(candidate, pattern = "Biofuels")) {
+    lsla$investment_type[i] <- "Biofuels"
+  } else if (str_detect(candidate, pattern = "(Forest)|(Timber)|(Conservation)")) {
+    lsla$investment_type[i] <- "Forestry"
+  } else if (str_detect(candidate, pattern = "Livestock")) {
+    lsla$investment_type[i] <- "Livestock"
+  } else if (str_detect(candidate, pattern = "Mining")) {
+    lsla$investment_type[i] <- "Mining"
+  } else if (str_detect(candidate, pattern = "Energy")) {
+    lsla$investment_type[i] <- "Energy"
+  } else if (str_detect(candidate, pattern = "Industry")) {
+    lsla$investment_type[i] <- "Industry"
+  } else {
+    lsla$investment_type[i] <- "Other"
+  }
+}
+
+lsla$investment_type <- as_factor(lsla$investment_type)
+
 
 # Drop intermediate variables
 lsla <- lsla %>%
   select(!c(intention_of_investment, concluded, implementation_status, 
-            imp_status_current, imp_production, sp2, sp1))
+            imp_status_current, imp_production, sp2, sp1, `crops_area/yield/export`))
 
 
 # Drop observations missing locations or year information
