@@ -1,5 +1,4 @@
 
-
 # This file validates (as best I can) the original data sources saved in the 
 # Data/Original folder. Validation informs certain processing decisions made in
 # the processing file. Namely, I {INSERT WHAT I DID IN RESPONSE TO VALIDATION}
@@ -19,9 +18,9 @@ library(sf)
 # ------------------------------ DATA -------------------------------
 
 # Read pre-cleaned data into memory
-lsla <- readRDS("./Data/lsla.R")
-areas_sp <- readRDS("./Data/areas_sp.R")
-locations_sp <- readRDS("./Data/locations_sp.R")
+lsla <- readRDS("./Data/lsla.RData")
+areas_sp <- readRDS("./Data/areas.RData")
+locations_sp <- readRDS("./Data/locations.RData")
 
 
 
@@ -82,31 +81,6 @@ st_distance(not_dup_lsla, not_dup_locations, by_element=TRUE)  # result is zero 
 
 
 
-# THIS IS NOT WORKING. FIX IT.
-matches = vector(mode = "list", length = length(dup_lsla$deal_id))
-
-for (i in 1:length(dup_lsla$deal_id)) {
-  id_lsla <- dup_lsla$deal_id[i]
-  print("---------------------------")
-  print(id_lsla)
-  
-  for (j in 1:length(dup_locations$deal_id)) {
-    id_loc <- dup_locations$deal_id[j]
-    
-    if (id_lsla == id_loc) {
-      print("---- Fuck Yes! Match! -----")
-      if (as.numeric(st_distance(dup_lsla[i, ], dup_locations[j, ])) == 0) {
-        matches[[i]] <- append(matches[[i]], id_loc)
-      }
-    }
-  }
-}
-
-
-# Confirm locations in set of duplicated entries match (and identify obs w/o a match)
-# anti_join(duplicated_obs_lsla, duplicated_obs_locations_sp, by = c(deal_id, "geometry"))
-
-# This is probably along the right track. 
 
 
 
