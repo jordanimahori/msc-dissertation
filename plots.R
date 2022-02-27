@@ -23,19 +23,26 @@ locations <- readRDS("./Data/locations.RData")
 # -------------------------- HISTOGRAMS ----------------------------
 
 # Histogram for Year Contract Signed
-ggplot(filter(lsla, year_signed > 1970), aes(year_signed)) +
-  geom_histogram(binwidth=1, colour='#000000', fill='#1f78b4', size=0.2) + 
-  labs(
-    x = "Year Signed",
-    y = "Count"
-  ) +
-  theme_light()
+
+lsla %>%
+  filter(year_signed > 1970) %>%
+  filter(investment_type %in% c("Biofuels", "Food", "Non-food", "Livestock")) %>% 
+  ggplot(aes(year_signed)) +
+    geom_histogram(binwidth=1, colour='#000000', fill='#1f78b4', size=0.2) + 
+    labs(
+      x = "Year Signed",
+      y = "Count"
+    ) +
+    theme_light()
 
 # Histogram for Year Production Started
-ggplot(filter(lsla, year_implemented > 1970), aes(year_implemented)) +
+lsla %>%
+  filter(year_signed > 1970) %>%
+  filter(investment_type %in% c("Biofuels", "Food", "Non-food", "Livestock")) %>% 
+  ggplot(aes(year_operational)) +
   geom_histogram(binwidth=1, colour='#000000', fill='#1f78b4', size=0.2) + 
   labs(
-    x = "Year Implemented",
+    x = "Year Operational",
     y = "Count"
   ) +
   theme_light()
@@ -46,16 +53,22 @@ ggplot(filter(lsla, year_implemented > 1970), aes(year_implemented)) +
 
 
 # Map of locations
-ggplot(locations) + 
-  geom_sf(size=0.1, colour='#1f78b4') +
-  coord_sf() +
-  theme_light()
+locations %>%
+  filter(year_signed > 1970) %>%
+  filter(investment_type %in% c("Biofuels", "Food", "Non-food", "Livestock")) %>% 
+  ggplot() + 
+    geom_sf(size=0.5, colour='#1f78b4') +
+    coord_sf() +
+    theme_light()
 
-# Map of locations, scaled by area 
-ggplot(locations) + 
-  geom_sf(size=locations$size_under_contract*0.000008, colour='#1f78b4') +
-  coord_sf() +
-  theme_light()
+# Map of locations, scaled by area
+locations %>%
+  filter(year_signed > 1970) %>%
+  filter(investment_type %in% c("Biofuels", "Food", "Non-food", "Livestock")) %>% 
+  ggplot() + 
+    geom_sf(aes(size=size_under_contract*0.000005, colour='#1f78b4')) +
+    coord_sf() +
+    theme_light()
 
 # Map of areas
 ggplot(areas) + 
@@ -65,7 +78,4 @@ ggplot(areas) +
   
   
   
-  
-
-
 
