@@ -26,18 +26,18 @@ library(sf)
 
 
 # Tabular data on land acquisitions (Source: LandMatrix) 
-filepaths = list.files("./Data/Original/", pattern=".csv")
+filepaths = list.files("./data/landmatrix/", pattern=".csv")
 datasets = list()
 
 for (file in filepaths) {
-  datasets[[gsub(".csv", "", file)]] <- read_delim(paste("Data/Original/", file, sep=""), 
+  datasets[[gsub(".csv", "", file)]] <- read_delim(paste("data/landmatrix/", file, sep=""), 
                                                    show_col_types=FALSE)   #(1)
 }
 
 
 # GeoJSON data on land acquisitions (Source: LandMatrix)
-locations <- st_read("./Data/Original/locations.geojson", quiet=TRUE)
-areas <- st_read("./Data/Original/areas.geojson", quiet=TRUE)
+locations <- st_read("./data/landmatrix/locations.geojson", quiet=TRUE)
+areas <- st_read("./data/landmatrix/areas.geojson", quiet=TRUE)
 
 
 
@@ -58,10 +58,11 @@ for (i in 1:length(datasets)) {
 
 # Drop additional irrelevant variables & rename for consistency
 datasets$deals <- datasets$deals %>%          
-  select(!c(is_public, not_public, size_under_contract,comment_on_land_area)) %>%
-  rename(investor_id=operating_company_investor_id,
-         size_under_contract=current_size_under_contract, 
-         size_in_operation=current_size_in_operation)
+  select(!c(is_public, not_public, size_under_contract,comment_on_land_area, 
+            current_size_under_contract)) %>%
+  rename(investor_id=operating_company_investor_id, country=target_country,
+         area_in_operation=current_size_in_operation, area_contracted=deal_size,
+         area_intended=intended_size, operating_company_registration=`operating_company_country_of_registration/origin`)
 
 colnames(datasets$investors) <- paste("investor_", colnames(datasets$investors), sep="")
 
@@ -243,6 +244,17 @@ locations <- locations %>%
 
 
 
+# ----------------- GENERATE EARTH ENGINE EXPORTS ---------------------
+
+
+# Creating CSV with countries & coordinates for Earth Engine exports
+locations %>%
+  select(deal_id,  lat, lon) %>%
+  st_write("./data/earthengine_locs.csv", append=FALSE)
+
+
+
+
 # ------------------------------ SAVE ---------------------------------
 
 
@@ -251,10 +263,9 @@ lsla <- st_as_sf(lsla, coords=c("lon", "lat"), crs=4326)
 
 
 # Save files for later use
-saveRDS(lsla, file="./Data/lsla.RData")
-saveRDS(locations, file="./Data/locations.RData")
-saveRDS(areas, file="./Data/areas.RData")
-
+saveRDS(lsla, file="./data/lsla.RData")
+saveRDS(locations, file="./data/locations.RData")
+saveRDS(areas, file="./data/areas.RData")
 
 
 
@@ -271,6 +282,8 @@ saveRDS(areas, file="./Data/areas.RData")
 # There are duplicates in the areas as well, but that's more complicated to 
 # deal with. There are 190 distinct entries.
 
+# deal_size and size_under_contract are identical except for 10 entries where 
+# size_under_contract is implausibly zero. I therefore drop size_under_contract.
 
 #### Some contracts were later cancelled. I still need to extract the cancelled
 #### date if that is important to me.
