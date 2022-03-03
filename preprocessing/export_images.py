@@ -48,7 +48,9 @@ EXPORT_TILE_RADIUS = 127  # image dimension = (2*EXPORT_TILE_RADIUS) + 1 = 255px
 def export_images(df: pd.DataFrame,
                   start_year: int,
                   end_year: int,
-                  export_folder: str
+                  export_folder: str,
+                  n: int,
+                  mosaic_period: int
                   ) -> dict[str, ee.batch.Task]:
     """
     Args:
@@ -56,32 +58,38 @@ def export_images(df: pd.DataFrame,
     - start_year: int, determines the first year of blocks
     - end_year: int, determines the last year (or cutoff) of blocks
     - export_folder: str, sets the folder where exports are sent
+    - n: int, sets the neighbourhood size in terms of number of "rings" (excludes the centre cell)
+    - mp: int, sets the period, in years, over which the mosaics are created
+
+    Returns:
+    - dict of tasks.
+
+    If a date range is supplied that is not a multiple of the period length, the remaining years will be truncated.
+    The function will attempt to alert the user when this occurs.
     """
-    # Estimates generated in 3-year blocks.
-    periods = int(math.floor(end_year - start_year)/3)
+    # Estimates generated in blocks according to provided mosaic period.
+    num_periods = math.floor((end_year - start_year) / mosaic_period)
     tasks = {}
 
     for idx, deal_id, lat, lon in df.itertuples():
         loc = ee.Geometry.Point(lon, lat)
-        min_area = loc.buffer(distance=20000).bounds()
+        max_extent = loc.buffer(distance=7650*(n + 0.5)).bounds()    # 30m/px * 255pxs
         year = start_year
-        for i in range(periods):
+        for i in range(num_periods):
+            # For each period of duration mosaic_period, this creates a cloud-free composite from all images
+            # intersecting the max_extent polygon between the supplied years.
             block_start = str(year) + "-01-01"
-            block_end = str(year + i) + "-12-31"
-            year = year + i
-
-            image_col = ee_utils.LandsatSR(min_area, block_start, block_end).merged
+            block_end = str(year + mosaic_period - 1) + "-12-31"
+            year = year + mosaic_period
+            image_col = ee_utils.LandsatSR(max_extent, block_start, block_end).merged
             image_col = image_col.map(ee_utils.mask_qaclear).select(MS_BANDS)
             img = image_col.median()
             img = ee_utils.add_latlon(img)
 
-            tasks[deal_id] = ee_utils.get_array_patches() # Fix
+            tasks[(str(deal_id) + "_" + str("{:02d}".format(i)))] = ee_utils.get_array_patches(
+            img=img, scale=SCALE, ksize=EXPORT_TILE_RADIUS,
+            points=fc, export=EXPORT, prefix=export_folder,
+            fname=fname, bucket=BUCKET)
     return tasks
-
-
-
-
-start_year = 2000
-end_year = 2020
 
 

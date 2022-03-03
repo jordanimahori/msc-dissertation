@@ -1,12 +1,16 @@
-# This file contains helper functions used in export_images.py for generating mosaics and exporting the files in
-# TFRecord format.
+# This file contains helper functions and a class used in export_images.py for generating cloud-free mosaics from
+# Landsat imagery, creating patches corresponding to layers of cells surrounding each large-scale land acquisition, and
+# exporting the patches in TFRecord format.
 
-# Acknowledgements: The classes and functions in this script were primarily written by Christopher Yeh and colleagues
+# Acknowledgements: The class and functions in this script were primarily written by Christopher Yeh and colleagues
 # for their paper, Yeh et al. (2020). The original code has been (lightly) adapted here for exporting image patches
 # for the locations and years required for my dissertation.
 
 
+# ==================== HELPER FUNCTIONS =======================
+
 import ee
+from typing import Optional
 
 
 def decode_qamask(img: ee.Image) -> ee.Image:
@@ -63,7 +67,8 @@ def mask_qaclear(img: ee.Image) -> ee.Image:
 
 
 def add_latlon(img: ee.Image) -> ee.Image:
-    """Creates a new ee.Image with 2 added bands of longitude and latitude
+    """
+    Creates a new ee.Image with 2 added bands of longitude and latitude
     coordinates named 'LON' and 'LAT', respectively.
     """
     latlon = ee.Image.pixelLonLat().select(
@@ -74,7 +79,8 @@ def add_latlon(img: ee.Image) -> ee.Image:
 
 def sample_patch(point: ee.Feature, patches_array: ee.Image,
                  scale: float) -> ee.Feature:
-    '''Extracts an image patch at a specific point.
+    """
+    Extracts an image patch at a specific point.
 
     Args
     - point: ee.Feature
@@ -82,7 +88,7 @@ def sample_patch(point: ee.Feature, patches_array: ee.Image,
     - scale: int or float, scale in meters of the projection to sample in
 
     Returns: ee.Feature, 1 property per band from the input image
-    '''
+    """
     arrays_samples = patches_array.sample(
         region=point.geometry(),
         scale=scale,
@@ -101,12 +107,13 @@ def get_array_patches(img: ee.Image,
                       export: str,
                       prefix: str,
                       fname: str,
+                      bucket: str,
                       selectors: Optional[ee.List] = None,
                       dropselectors: Optional[ee.List] = None,
-                      bucket: Optional[str] = None
                       ) -> ee.batch.Task:
-    '''Creates and starts a task to export square image patches in TFRecord
-    format to Google Drive or Google Cloud Storage (GCS). The image patches are
+    """
+    Creates and starts a task to export square image patches in TFRecord
+    format to Google Cloud Storage (GCS). The image patches are
     sampled from the given ee.Image at specific coordinates.
 
     Args
@@ -114,16 +121,16 @@ def get_array_patches(img: ee.Image,
     - scale: int or float, scale in meters of the projection to sample in
     - ksize: int or float, radius of square image patch
     - points: ee.FeatureCollection, coordinates from which to sample patches
-    - export: str, 'drive' for Google Drive, 'gcs' for GCS
-    - prefix: str, folder name in Drive or GCS to export to, no trailing '/'
+    - export: 'gcs' for GCS
+    - prefix: str, folder name in GCS to export to, no trailing '/'
     - fname: str, filename for export
     - selectors: None or ee.List, names of properties to include in output,
         set to None to include all properties
     - dropselectors: None or ee.List, names of properties to exclude
-    - bucket: None or str, name of GCS bucket, only used if export=='gcs'
+    - bucket: name of GCS bucket
 
     Returns: ee.batch.Task
-    '''
+    """
     kern = ee.Kernel.square(radius=ksize, units='pixels')
     patches_array = img.neighborhoodToArray(kern)
 
@@ -135,6 +142,66 @@ def get_array_patches(img: ee.Image,
     return tfexporter(collection=samples, export=export, prefix=prefix,
                       fname=fname, selectors=selectors,
                       dropselectors=dropselectors, bucket=bucket)
+
+
+def tfexporter(collection: ee.FeatureCollection, export: str, prefix: str,
+               fname: str, selectors: Optional[ee.List] = None,
+               dropselectors: Optional[ee.List] = None,
+               bucket: Optional[str] = None) -> ee.batch.Task:
+    """
+    Creates and starts a task to export a ee.FeatureCollection to a TFRecord
+    file in Google Drive or Google Cloud Storage (GCS).
+
+    GCS:   gs://bucket/prefix/fname.tfrecord
+    Drive: prefix/fname.tfrecord
+
+    Args
+    - collection: ee.FeatureCollection
+    - export: str, 'drive' for Drive, 'gcs' for GCS
+    - prefix: str, folder name in Drive or GCS to export to, no trailing '/'
+    - fname: str, filename
+    - selectors: None or ee.List of str, names of properties to include in
+        output, set to None to include all properties
+    - dropselectors: None or ee.List of str, names of properties to exclude
+    - bucket: None or str, name of GCS bucket, only used if export=='gcs'
+
+    Returns
+    - task: ee.batch.Task
+    """
+    if dropselectors is not None:
+        if selectors is None:
+            selectors = collection.first().propertyNames()
+
+        selectors = selectors.removeAll(dropselectors)
+
+    if export == 'gcs':
+        task = ee.batch.Export.table.toCloudStorage(
+            collection=collection,
+            description=fname,
+            bucket=bucket,
+            fileNamePrefix=f'{prefix}/{fname}',
+            fileFormat='TFRecord',
+            selectors=selectors)
+
+    elif export == 'drive':
+        task = ee.batch.Export.table.toDrive(
+            collection=collection,
+            description=fname,
+            folder=prefix,
+            fileNamePrefix=fname,
+            fileFormat='TFRecord',
+            selectors=selectors)
+
+    else:
+        raise ValueError(f'export "{export}" is not one of ["gcs", "drive"]')
+
+    task.start()
+    return task
+
+
+# ===================== SATELLITE IMAGERY CLASS =======================
+# This class abstracts interacting with Google Earth collections for Landsat 5, 7 and 8 imagery. It also renames each
+# band and applies transformations to the imagery to ensure consistency with Yeh et al. (2020).
 
 
 class LandsatSR:
@@ -197,7 +264,7 @@ class LandsatSR:
         radsat_qa               Radiometric saturation QA, see Radsat QA table
         """
         new_names = ['AEROS', 'BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2',
-                    'TEMP1', 'TEMP2', 'sr_aerosol', 'pixel_qa', 'radsat_qa']
+                     'TEMP1', 'TEMP2', 'sr_aerosol', 'pixel_qa', 'radsat_qa']
         return img.rename(new_names)
 
     @staticmethod
@@ -252,7 +319,7 @@ class LandsatSR:
         radsat_qa                     Radiometric saturation QA, see Radiometric Saturation QA table
         """
         new_names = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'TEMP1', 'SWIR2',
-                    'sr_atmos_opacity', 'sr_cloud_qa', 'pixel_qa', 'radsat_qa']
+                     'sr_atmos_opacity', 'sr_cloud_qa', 'pixel_qa', 'radsat_qa']
         return img.rename(new_names)
 
     @staticmethod
@@ -278,4 +345,3 @@ class LandsatSR:
         # system properties are not copied
         scaled = scaled.set('system:time_start', img.get('system:time_start'))
         return scaled
-
