@@ -86,6 +86,7 @@ def export_images(df: pd.DataFrame,
             img = image_col.median()
             img = ee_utils.add_latlon(img)
 
+            fname = f'{country}_{year}_{i:02d}'
             tasks[(str(deal_id) + "_" + str("{:02d}".format(i)))] = ee_utils.get_array_patches(
             img=img, scale=SCALE, ksize=EXPORT_TILE_RADIUS,
             points=fc, export=EXPORT, prefix=export_folder,
