@@ -77,7 +77,7 @@ def add_latlon(img: ee.Image) -> ee.Image:
     return img.addBands(latlon)
 
 
-def sample_patch(point: ee.Feature, patches_array: ee.Image,
+def sample_patch(point: ee.Geometry, patches_array: ee.Image,
                  scale: float) -> ee.Feature:
     """
     Extracts an image patch at a specific point.
@@ -90,7 +90,7 @@ def sample_patch(point: ee.Feature, patches_array: ee.Image,
     Returns: ee.Feature, 1 property per band from the input image
     """
     arrays_samples = patches_array.sample(
-        region=point.geometry(),
+        region=point,
         scale=scale,
         projection='EPSG:3857',
         factor=None,
@@ -103,7 +103,7 @@ def sample_patch(point: ee.Feature, patches_array: ee.Image,
 def get_array_patches(img: ee.Image,
                       scale: float,
                       ksize: float,
-                      points: ee.FeatureCollection,
+                      pt: ee.Geometry,
                       export: str,
                       prefix: str,
                       fname: str,
@@ -135,11 +135,11 @@ def get_array_patches(img: ee.Image,
     patches_array = img.neighborhoodToArray(kern)
 
     # ee.Image.sampleRegions() does not cut it for larger collections,
-    # using mapped sample instead
-    samples = points.map(lambda pt: sample_patch(pt, patches_array, scale))
+    # Use mapped sample instead
+    sample = sample_patch(pt, patches_array, scale)
 
-    # export to a TFRecord file which can be loaded directly in TensorFlow
-    return tfexporter(collection=samples, export=export, prefix=prefix,
+    # Export to a TFRecord file which can be loaded directly in TensorFlow
+    return tfexporter(collection=sample, export=export, prefix=prefix,
                       fname=fname, selectors=selectors,
                       dropselectors=dropselectors, bucket=bucket)
 
@@ -149,7 +149,7 @@ def tfexporter(collection: ee.FeatureCollection, export: str, prefix: str,
                dropselectors: Optional[ee.List] = None,
                bucket: Optional[str] = None) -> ee.batch.Task:
     """
-    Creates and starts a task to export a ee.FeatureCollection to a TFRecord
+    Creates and starts a task to export an ee.FeatureCollection to a TFRecord
     file in Google Drive or Google Cloud Storage (GCS).
 
     GCS:   gs://bucket/prefix/fname.tfrecord
@@ -202,7 +202,6 @@ def tfexporter(collection: ee.FeatureCollection, export: str, prefix: str,
 # ===================== SATELLITE IMAGERY CLASS =======================
 # This class abstracts interacting with Google Earth collections for Landsat 5, 7 and 8 imagery. It also renames each
 # band and applies transformations to the imagery to ensure consistency with Yeh et al. (2020).
-
 
 class LandsatSR:
     def __init__(self, filter_polygon: ee.Geometry.Polygon, start_date: str,
