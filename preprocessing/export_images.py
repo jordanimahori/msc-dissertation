@@ -20,13 +20,16 @@ from utils import ee_utils
 
 # ==================== PARAMETERS ======================
 
-# Export Data Params
-EXPORT = 'gcs'          # to export to Google Drive, set as: 'drive'
-BUCKET = 'msc-imagery'  # to export to Google Drive, set as: None
-EXPORT_FOLDER = 'tfrecords_raw'
+# Export Data Params (modify these to adjust export behaviour)
+EXPORT = 'gcs'                           # to export to Google Drive, set as: 'drive'
+BUCKET = 'msc-imagery'                   # to export to Google Drive, set as: None
+EXPORT_FOLDER = 'tfrecords_raw'          # directory name in which to store processed TFRecords
+CSV_PATH = 'data/earthengine_test.csv'   # locations of centroids for each observation
 
-# Input Data Path
-CSV_PATH = 'data/earthengine_test.csv'
+START_YEAR = 2010      # first year of range over which to generate image patches
+END_YEAR = 2020        # last year of range over which to generate image patches
+MOSAIC_PERIOD = 3      # length of interval (in years) over which cloud-free mosaics are constructed
+NRINGS = 2             # number of concentric rings of tiles to export
 
 # Band Names
 MS_BANDS = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2', 'TEMP1']
@@ -34,7 +37,6 @@ MS_BANDS = ['BLUE', 'GREEN', 'RED', 'NIR', 'SWIR1', 'SWIR2', 'TEMP1']
 # Image Parameters
 PROJECTION = 'EPSG:3857'  # see https://epsg.io/3857
 SCALE = 30                # export resolution: 30m/px
-NRINGS = 0                # number of concentric rings of tiles to export
 EXPORT_TILE_RADIUS = 127 + 255*NRINGS  # image dimension = (2*EXPORT_TILE_RADIUS) + 1 = 255px
 
 
@@ -73,6 +75,7 @@ def export_images(df: pd.DataFrame,
     """
     # Estimates generated in blocks according to provided mosaic period.
     num_periods = math.floor((end_year - start_year) / mosaic_period)
+    dimensions = [255 + 255*2*n, 255 + 255*2*n]
     tasks = {}
 
     for idx, deal_id, lat, lon in df.itertuples():
@@ -89,15 +92,14 @@ def export_images(df: pd.DataFrame,
             img = ee_utils.add_latlon(img)   # add latitude and longitude bands
 
             fname = f'{deal_id}_{year}'
-            tasks[(export_folder, deal_id, block_start, i)] = ee_utils.get_array_patches(
-                img=img, scale=SCALE, ksize=EXPORT_TILE_RADIUS,
-                pt=loc, export=EXPORT, prefix=export_folder,
-                fname=fname, bucket=BUCKET)
+            tasks[(export_folder, deal_id, block_start, i)] = ee_utils.tfexporter(
+                image=img, scale=SCALE, region=max_extent, export=EXPORT,
+                prefix=export_folder, fname=fname, bucket=BUCKET)
 
             year = year + mosaic_period
 
     return tasks
 
 
-export_images(df, 2013, 2016, EXPORT_FOLDER, 2, 3)
-
+# Run export
+export_images(df, START_YEAR, END_YEAR, EXPORT_FOLDER, NRINGS, MOSAIC_PERIOD)
