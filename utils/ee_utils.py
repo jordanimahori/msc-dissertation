@@ -1,10 +1,10 @@
 # This file contains helper functions and a class used in export_images.py for generating cloud-free mosaics from
-# Landsat imagery, creating patches corresponding to layers of cells surrounding each large-scale land acquisition, and
-# exporting the patches in TFRecord format.
+# Landsat imagery, creating patches corresponding to concentric rings of cells surrounding each large-scale land
+# acquisition, and exporting the patches in TFRecord format.
 
 # Acknowledgements: The class and functions in this script were primarily written by Christopher Yeh and colleagues
-# for their paper, Yeh et al. (2020). The original code has been (lightly) adapted here for exporting image patches
-# for the locations and years required for my dissertation.
+# for their paper, Yeh et al. (2020). The original functions have been (lightly) adapted here for exporting image
+# patches for the locations and years required for my dissertation.
 
 
 # ==================== HELPER FUNCTIONS =======================
@@ -77,75 +77,13 @@ def add_latlon(img: ee.Image) -> ee.Image:
     return img.addBands(latlon)
 
 
-def sample_patch(point: ee.Geometry, patches_array: ee.Image,
-                 scale: float) -> ee.Feature:
-    """
-    Extracts an image patch at a specific point.
-
-    Args
-    - point: ee.Feature
-    - patches_array: ee.Image, Array Image
-    - scale: int or float, scale in meters of the projection to sample in
-
-    Returns: ee.Feature, 1 property per band from the input image
-    """
-    arrays_samples = patches_array.sample(
-        region=point,
-        scale=scale,
-        projection='EPSG:3857',
-        factor=None,
-        numPixels=None,
-        dropNulls=False,
-        tileScale=12)
-    return arrays_samples.first().copyProperties(point)
-
-
-def get_array_patches(img: ee.Image,
-                      scale: float,
-                      ksize: float,
-                      pt: ee.Geometry,
-                      export: str,
-                      prefix: str,
-                      fname: str,
-                      bucket: str,
-                      selectors: Optional[ee.List] = None,
-                      dropselectors: Optional[ee.List] = None,
-                      ) -> ee.batch.Task:
-    """
-    Creates and starts a task to export square image patches in TFRecord
-    format to Google Cloud Storage (GCS). The image patches are
-    sampled from the given ee.Image at specific coordinates.
-
-    Args
-    - img: ee.Image, image covering the entire region of interest
-    - scale: int or float, scale in meters of the projection to sample in
-    - ksize: int or float, radius of square image patch
-    - points: ee.FeatureCollection, coordinates from which to sample patches
-    - export: 'gcs' for GCS
-    - prefix: str, folder name in GCS to export to, no trailing '/'
-    - fname: str, filename for export
-    - selectors: None or ee.List, names of properties to include in output,
-        set to None to include all properties
-    - dropselectors: None or ee.List, names of properties to exclude
-    - bucket: name of GCS bucket
-
-    Returns: ee.batch.Task
-    """
-    kern = ee.Kernel.square(radius=ksize, units='pixels')
-    patches_array = img.neighborhoodToArray(kern)
-
-    # ee.Image.sampleRegions() does not cut it for larger collections,
-    # Use mapped sample instead
-    sample = sample_patch(pt, patches_array, scale)
-
-    # Export to a TFRecord file which can be loaded directly in TensorFlow
-    return tfexporter(collection=sample, export=export, prefix=prefix,
-                      fname=fname, selectors=selectors,
-                      dropselectors=dropselectors, bucket=bucket)
-
-
-def tfexporter(collection: ee.FeatureCollection, export: str, prefix: str,
-               fname: str, selectors: Optional[ee.List] = None,
+def tfexporter(image: ee.Image,
+               scale: int,
+               export: str,
+               prefix: str,
+               fname: str,
+               region: ee.Geometry,
+               selectors: Optional[ee.List] = None,
                dropselectors: Optional[ee.List] = None,
                bucket: Optional[str] = None) -> ee.batch.Task:
     """
@@ -156,8 +94,8 @@ def tfexporter(collection: ee.FeatureCollection, export: str, prefix: str,
     Drive: prefix/fname.tfrecord
 
     Args
-    - collection: ee.FeatureCollection
-    - export: str, 'drive' for Drive, 'gcs' for GCS
+    - image: ee.Image, image from which to extract patches
+    - export: str, 'drive' for Google Drive, 'gcs' for GCS
     - prefix: str, folder name in Drive or GCS to export to, no trailing '/'
     - fname: str, filename
     - selectors: None or ee.List of str, names of properties to include in
@@ -168,6 +106,12 @@ def tfexporter(collection: ee.FeatureCollection, export: str, prefix: str,
     Returns
     - task: ee.batch.Task
     """
+    formatOptions = {
+        'patchDimensions': [255, 255]
+    }
+
+# Cannot use dimensions with scale. So need to use a bounding box.
+
     if dropselectors is not None:
         if selectors is None:
             selectors = collection.first().propertyNames()
@@ -175,22 +119,28 @@ def tfexporter(collection: ee.FeatureCollection, export: str, prefix: str,
         selectors = selectors.removeAll(dropselectors)
 
     if export == 'gcs':
-        task = ee.batch.Export.table.toCloudStorage(
-            collection=collection,
+        task = ee.batch.Export.image.toCloudStorage(
+            image=image,
+            scale=scale,
             description=fname,
             bucket=bucket,
             fileNamePrefix=f'{prefix}/{fname}',
+            region=region,
             fileFormat='TFRecord',
-            selectors=selectors)
+            # selectors=selectors,
+            formatOptions=formatOptions)
 
     elif export == 'drive':
-        task = ee.batch.Export.table.toDrive(
-            collection=collection,
+        task = ee.batch.Export.image.toDrive(
+            image=image,
+            scale=scale,
             description=fname,
             folder=prefix,
             fileNamePrefix=fname,
+            region=region,
             fileFormat='TFRecord',
-            selectors=selectors)
+            # selectors=selectors,
+            formatOptions=formatOptions)
 
     else:
         raise ValueError(f'export "{export}" is not one of ["gcs", "drive"]')

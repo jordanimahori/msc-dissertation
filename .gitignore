@@ -1,5 +1,9 @@
+# Ignoring MacOS + IDE files
 .DS_Store
 *.Rproj
 .Rproj.user
 .idea/*
 __pycache__*
+
+# Ignoring anything in data/ directory
+data/*
