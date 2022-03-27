@@ -5,6 +5,7 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 
+
 # ==================== PARAMETERS ===================
 
 # Specify names locations for outputs in Cloud Storage.
@@ -80,7 +81,6 @@ def parse_tfrecord(raw_dataset: tf.data.TFRecordDataset, feature_description: di
     """
     feature_description = feature_description
     feature_dict = {}
-    i = 0
 
     def parse_function(example_proto):
         # Parse the `tf.train.Example` proto using the above dictionary.
@@ -121,6 +121,5 @@ def encode_feature_dict(feature_dict: dict):
     return example
 
 
-# ======= TESTING ========
-
+# Call the function on all deal_ids to generate individual TFRecords
 process_tfrecords(csv_path=CSV_PATH, input_dir=INPUT_DIR, processed_dir=PROCESSED_DIR)
