@@ -7,3 +7,6 @@ __pycache__*
 
 # Ignoring anything in data/ directory
 data/*
+
+# Ignoring scripts used for prototyping other functions
+scratchpad.py
