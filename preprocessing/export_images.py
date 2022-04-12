@@ -1,15 +1,20 @@
 
 # OVERVIEW:
-# We need to extract patches of 255x255 pixels (~7.6km in diameter) from LandSat scenes which are ~115km x 115km in
-# area. The centre patch is positioned such that its centroid lies over top of the centroid of the agricultural
-# development, and subsequent patches area arranged in a grid emanating outward. For every agricultural development, we
-# therefore generate a series of patches around its centroid and export them in TFRecord format so that we can generate
-# estimates of household material assets using model weights from Yeh et al. (2020).
+# We need to extract patches of 255x255 pixels where each pixel corresponds to an area of approximately 30m x 30m on the
+# Earth (i.e. each patch is ~7.6km in diameter) from LandSat scenes which are ~115km x 115km in area. This area can
+# extend beyond a single scene, so we create a composite of scenes which wholly contain all of our patches and extract
+# image patches from this composite. However, since pixels only approximately equal 30m/px, we add an arbitrary constant
+# (in this case 50m) to each patch to allow for slight variance in spatial resolution for the area from which we draw
+# our patches. This introduces a slight misalignment between patch area and an actual grid where the centre patch is
+# positioned such that its centroid lies over top of the centroid of the agricultural development. Subsequent patches
+# area arranged in a grid emanating outward. For every agricultural development, we therefore generate a series of
+# patches around its centroid and export them in TFRecord format so that we can generate estimates of household material
+# assets using model weights from Yeh et al. (2020).
 
 # In order to filter Earth Engine image collections to show an area containing at least the centre cell + 2 adjacent
-# rings of cells, we need images matching an area of radius ~7.6km x 2.5, or a box of approximately 46km x 46km, centred
-# around each industrial agriculture development. This script creates these boxes and generates a file which will be
-# used by Earth Engine to create the necessary mosaics.
+# rings of cells, we need images patches for an area of radius ~7.6km x 2.5, or a box of approximately 46km x 46km,
+# centred around each industrial agriculture development. This script creates these boxes and generates a file which
+# will be used by Earth Engine to create the necessary mosaics.
 
 
 import ee
@@ -24,7 +29,7 @@ from utils import ee_utils
 EXPORT = 'gcs'                           # to export to Google Drive, set as: 'drive'
 BUCKET = 'msc-imagery'                   # to export to Google Drive, set as: None
 EXPORT_FOLDER = 'tfrecords_raw'          # directory name in which to store processed TFRecords
-CSV_PATH = 'data/earthengine_test.csv'   # locations of centroids for each observation
+CSV_PATH = 'data/earthengine_test.csv'   # locations of centroids for each observation  # TODO: EDIT TO INCLUDE ALL LOCS
 
 START_YEAR = 2010      # first year of range over which to generate image patches
 END_YEAR = 2020        # last year of range over which to generate image patches
@@ -75,12 +80,11 @@ def export_images(df: pd.DataFrame,
     """
     # Estimates generated in blocks according to provided mosaic period.
     num_periods = math.floor((end_year - start_year) / mosaic_period)
-    dimensions = [255 + 255*2*n, 255 + 255*2*n]
     tasks = {}
 
     for idx, deal_id, lat, lon in df.itertuples():
         loc = ee.Geometry.Point(lon, lat)
-        max_extent = loc.buffer(distance=7650*(n + 0.5)).bounds()    # 30m/px * 255pxs
+        max_extent = loc.buffer(distance=7700*(n + 0.5)).bounds()    # 30m/px * 255pxs + 50m extra for variance
         year = start_year
         for i in range(num_periods):
             # Creates a cloud-free composite from all images intersecting the max_extent polygon within the interval.
