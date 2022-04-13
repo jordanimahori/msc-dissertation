@@ -20,6 +20,8 @@
 import ee
 import math
 import pandas as pd
+from typing import Dict
+
 from utils import ee_utils
 
 
@@ -29,7 +31,7 @@ from utils import ee_utils
 EXPORT = 'gcs'                           # to export to Google Drive, set as: 'drive'
 BUCKET = 'msc-imagery'                   # to export to Google Drive, set as: None
 EXPORT_FOLDER = 'tfrecords_raw'          # directory name in which to store processed TFRecords
-CSV_PATH = 'data/earthengine_test.csv'   # locations of centroids for each observation  # TODO: EDIT TO INCLUDE ALL LOCS
+CSV_PATH = 'data/earthengine_locs.csv'   # locations of centroids for each observation
 
 START_YEAR = 2010      # first year of range over which to generate image patches
 END_YEAR = 2020        # last year of range over which to generate image patches
@@ -62,7 +64,7 @@ def export_images(df: pd.DataFrame,
                   export_folder: str,
                   n: int,
                   mosaic_period: int
-                  ) -> dict[str, ee.batch.Task]:
+                  ) -> Dict[str, ee.batch.Task]:
     """
     Args:
     - df: pd.Data.Frame containing lat, lon, and deal_id columns
@@ -106,4 +108,5 @@ def export_images(df: pd.DataFrame,
 
 
 # Run export
-export_images(df, START_YEAR, END_YEAR, EXPORT_FOLDER, NRINGS, MOSAIC_PERIOD)
+if __name__ == '__main__':
+    export_images(df, START_YEAR, END_YEAR, EXPORT_FOLDER, NRINGS, MOSAIC_PERIOD)
