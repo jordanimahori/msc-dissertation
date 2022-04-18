@@ -1,15 +1,11 @@
-# This file defines the Batcher class, which is used to feed observations to the MS model from Yeh et al. (2020).
-
-# Acknowledgements: The batcher class and associated functions in this script are a simplified and modified version of
-# a class originally written by Christopher Yeh and colleagues for their paper, Yeh et al. (2020).
-
+from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from typing import Optional
 
 import tensorflow as tf
 
-from batchers.dataset_constants import MEANS_DICT, STD_DEVS_DICT
+from utils.dataset_constants import MEANS_DICT, STD_DEVS_DICT
 
 
 class Batcher():
@@ -86,9 +82,7 @@ class Batcher():
         self.nl_label = nl_label
 
     def get_batch(self) -> tuple[tf.Operation, dict[str, tf.Tensor]]:
-        """
-        Gets the tf.Tensors that represent a batch of data.
-
+        """Gets the tf.Tensors that represent a batch of data.
         Returns
         - iter_init: tf.Operation that should be run before first use
         - batch: dict, str -> tf.Tensor
@@ -98,7 +92,6 @@ class Batcher():
             - 'labels': tf.Tensor, shape [batch_size] or [batch_size, label_dim], type float32
                 - shape [batch_size, 2] if self.label_name and self.nl_label are not None
             - 'years': tf.Tensor, shape [batch_size], type int32
-
         IMPLEMENTATION NOTE: The order of tf.data.Dataset.batch() and .repeat() matters!
             Suppose the size of the dataset is not evenly divisible by self.batch_size.
             If batch then repeat, i.e., `ds.batch(batch_size).repeat(num_epochs)`:
@@ -112,7 +105,8 @@ class Batcher():
                 tf.data.Dataset.from_tensor_slices(self.tfrecord_files)
                 .shuffle(buffer_size=1000)
                 .interleave(
-                    lambda file_path: tf.data.TFRecordDataset(file_path, compression_type='GZIP'),
+                    # lambda file_path: tf.data.TFRecordDataset(file_path, compression_type='GZIP'),
+                    lambda file_path: tf.data.TFRecordDataset(file_path), # TODO: Delete this and uncomment above (if GZIP not problem)
                     cycle_length=self.num_threads,
                     block_length=1,
                     num_parallel_calls=tf.data.experimental.AUTOTUNE))
@@ -120,7 +114,7 @@ class Batcher():
             # convert to individual records
             dataset = tf.data.TFRecordDataset(
                 filenames=self.tfrecord_files,
-                compression_type='GZIP',
+                # compression_type='GZIP', # TODO: Uncomment this.
                 buffer_size=1024 * 1024 * 128,  # 128 MB buffer size
                 num_parallel_reads=self.num_threads)
 
@@ -160,7 +154,6 @@ class Batcher():
         """
         Args
         - example_proto: a tf.train.Example protobuf
-
         Returns: dict {'images': img, 'labels': label, 'locs': loc, 'years': year, ...}
         - img: tf.Tensor, shape [224, 224, C], type float32
           - channel order is [B, G, R, SWIR1, SWIR2, TEMP1, NIR, NIGHTLIGHTS]
@@ -247,16 +240,15 @@ class Batcher():
         return result
 
     def split_nl_band(self, ex: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
-        '''Splits the NL band into separate DMSP and VIIRS bands.
-
+        """
+        Splits the NL band into separate DMSP and VIIRS bands.
         Args
         - ex: dict {'images': img, 'years': year, ...}
             - img: tf.Tensor, shape [H, W, C], type float32, final band is NL
             - year: tf.Tensor, scalar, type int32
-
         Returns: ex, with img updated to have 2 NL bands
         - img: tf.Tensor, shape [H, W, C], type float32, last two bands are [DMSP, VIIRS]
-        '''
+        """
         assert self.nl_band == 'split'
         all_0 = tf.zeros(shape=[224, 224, 1], dtype=tf.float32, name='all_0')
         img = ex['images']
@@ -272,16 +264,15 @@ class Batcher():
         return ex
 
     def augment_example(self, ex: dict[str, tf.Tensor]) -> dict[str, tf.Tensor]:
-        '''Performs image augmentation (random flips + levels adjustments).
+        """
+        Performs image augmentation (random flips + levels adjustments).
         Does not perform level adjustments on NL band(s).
-
         Args
         - ex: dict {'images': img, ...}
             - img: tf.Tensor, shape [H, W, C], type float32
                 NL band depends on self.ls_bands and self.nl_band
-
         Returns: ex, with img replaced with an augmented image
-        '''
+        """
         assert self.augment
         img = ex['images']
 
@@ -293,16 +284,15 @@ class Batcher():
         return ex
 
     def augment_levels(self, img: tf.Tensor) -> tf.Tensor:
-        '''Perform random brightness / contrast on the image.
+        """
+        Perform random brightness / contrast on the image.
         Does not perform level adjustments on NL band(s).
-
         Args
         - img: tf.Tensor, shape [H, W, C], type float32
             - self.nl_band = 'merge' => final band is NL band
             - self.nl_band = 'split' => last 2 bands are NL bands
-
         Returns: tf.Tensor with data augmentation applied
-        '''
+        """
         def rand_levels(image: tf.Tensor) -> tf.Tensor:
             # up to 0.5 std dev brightness change
             image = tf.image.random_brightness(image, max_delta=0.5)
@@ -327,7 +317,6 @@ class UrbanBatcher(Batcher):
         '''
         Args
         - example_proto: a tf.train.Example protobuf
-
         Returns
         - predicate: tf.Tensor, type bool, True to keep, False to filter out
         '''
@@ -344,7 +333,6 @@ class RuralBatcher(Batcher):
         '''
         Args
         - example_proto: a tf.train.Example protobuf
-
         Returns
         - predicate: tf.Tensor, type bool, True to keep, False to filter out
         '''
