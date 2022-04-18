@@ -2,7 +2,6 @@ import os
 from glob import glob
 
 import tensorflow as tf
-import numpy as np
 import pandas as pd
 
 
@@ -47,8 +46,10 @@ def process_tfrecords(csv_path: str, input_dir: str, processed_dir: str):
     """
     df = pd.read_csv(csv_path, float_precision='high', index_col=False)
     deal_ids = df['deal_id']
+    lat = df['lat']
+    lon = df['lon']
 
-    for deal_id in deal_ids:                               # iterate over all deal_ids
+    for k, deal_id in enumerate(deal_ids):                               # iterate over all deal_ids
         output_dir = os.path.join(processed_dir, str(deal_id))
         os.makedirs(output_dir, exist_ok=True)
         tfrecord_paths = glob(os.path.join(input_dir, str(deal_id) + '*'))
@@ -58,10 +59,11 @@ def process_tfrecords(csv_path: str, input_dir: str, processed_dir: str):
             dataset = tf.data.TFRecordDataset(tfrecord)
             observation_dict = parse_tfrecord(dataset, FEATURE_DESCRIPTION)
             year = int(tfrecord[-13:-9])                   # extracts the year from the TFRecord name
+            scalar_dict = {'lat': lat[k], 'lon': lon[k], 'year': year, 'wealthpooled': 0}
 
-            for i, feature_dict in observation_dict.items():
-                output_path = os.path.join(output_dir, f'{year}_{i:04d}.tfrecord.gz')  # NRINGS must be < 10
-                example = encode_feature_dict(feature_dict)
+            for i, img_dict in observation_dict.items():
+                output_path = os.path.join(output_dir, f'{deal_id}_{year}_{i:04d}.tfrecord.gz')  # NRINGS must be < 10
+                example = encode_feature_dict(img_dict, scalar_dict)
 
                 with tf.io.TFRecordWriter(output_path) as writer:
                     writer.write(example.SerializeToString())
@@ -95,7 +97,7 @@ def parse_tfrecord(raw_dataset: tf.data.TFRecordDataset, feature_description: di
     return feature_dict
 
 
-def encode_feature_dict(feature_dict: dict):
+def encode_feature_dict(img_dict: dict, scalar_dict: dict):
     """
     Serializes a dictionary of features so that it can be written as a TFRecord.
 
@@ -106,8 +108,13 @@ def encode_feature_dict(feature_dict: dict):
     - serialized_feature_dict: tf.train.Example
     """
     serialized_feature_dict = {}
-    for key, tensor in feature_dict.items():
+
+    for key, tensor in img_dict.items():
         feature = tf.train.Feature(float_list=tf.train.FloatList(value=tensor.numpy().flatten()))
+        serialized_feature_dict[key] = feature
+
+    for key, scalar in scalar_dict.items():
+        feature = tf.train.Feature(float_list=tf.train.FloatList(value=[scalar]))
         serialized_feature_dict[key] = feature
 
     features = tf.train.Features(feature=serialized_feature_dict)
