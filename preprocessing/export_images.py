@@ -19,10 +19,13 @@
 # If export fails because the number of observations exceeds EE's max, run get_batch_ids and re-run the function for
 # each batch_id.
 
+# Some images do not contain images because Landsat did not have global coverage until Landsat 7 was launched in 2000.
+
+
 import ee
 import math
 import pandas as pd
-from typing import Dict, Optional, Tuple, Any
+from typing import Dict, Tuple, Any
 
 from ee.batch import Task
 
@@ -50,14 +53,11 @@ PROJECTION = 'EPSG:3857'  # see https://epsg.io/3857
 SCALE = 30                # export resolution: 30m/px
 EXPORT_TILE_RADIUS = 127 + 255*NRINGS  # image dimension = (2*EXPORT_TILE_RADIUS) + 1 = 255px
 
-
-# =================== INITIALIZE ENVIRONMENT ============================
+# Load location candidates
+DATASET = pd.read_csv(CSV_PATH)
 
 # Initialize Earth Engine
 ee.Initialize()
-
-# Load location candidates
-DATASET = pd.read_csv(CSV_PATH)
 
 
 # ==================== FUNCTIONS ======================
@@ -68,8 +68,8 @@ def get_batch_ids(df: pd.DataFrame,
                   mosaic_period: int):
     n = len(df)
     periods = math.floor((end_year - start_year) / mosaic_period)
-    max_batch = math.floor(2500 / periods)
-    return [i for i in range(math.ceil(n / max_batch))]  # EE can process a maximum of 3000 jobs at once
+    max_batch_size = math.floor(2500 / periods)
+    return [i for i in range(math.ceil(n / max_batch_size))]  # EE can process a maximum of 3000 jobs at once
 
 
 def export_images(df: pd.DataFrame,
@@ -97,9 +97,11 @@ def export_images(df: pd.DataFrame,
     The function will attempt to alert the user when this occurs.
     """
     # Subset df if subset id is supplied
-    if subset_id is not None:
-        start = 2500*subset_id
-        end = start + 2500
+    if subset_id is not None:  # TODO: CHECK THAT ADDITIONS TO SUBSET LOGIC ACTUALLY WORKS
+        periods = math.floor((end_year - start_year) / mosaic_period)
+        batch_size = math.floor(2500 / periods)
+        start = subset_id*batch_size
+        end = start + batch_size
         df = df[start:end]
 
     # Estimates generated in blocks according to provided mosaic period.
