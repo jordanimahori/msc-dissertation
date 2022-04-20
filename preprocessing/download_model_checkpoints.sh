@@ -12,15 +12,7 @@ cd ../outputs
 
 BASE_GITHUB_URL="https://github.com/sustainlab-group/africa_poverty/releases/download/v1.0.1/"
 
-DHS_OOC_MODELS=(
-    "DHS_OOC_A_ms_samescaled_b64_fc01_conv01_lr0001"
-    "DHS_OOC_B_ms_samescaled_b64_fc001_conv001_lr0001"
-    "DHS_OOC_C_ms_samescaled_b64_fc001_conv001_lr001"
-    "DHS_OOC_D_ms_samescaled_b64_fc001_conv001_lr01"
-    "DHS_OOC_E_ms_samescaled_b64_fc01_conv01_lr001"
-)
-
-DHS_INCOUNTRY_MODELS=(
+MS_INCOUNTRY_MODELS=(
     "DHS_Incountry_A_ms_samescaled_b64_fc01_conv01_lr001"
     "DHS_Incountry_B_ms_samescaled_b64_fc1_conv1_lr001"
     "DHS_Incountry_C_ms_samescaled_b64_fc1.0_conv1.0_lr0001"
@@ -29,27 +21,15 @@ DHS_INCOUNTRY_MODELS=(
 )
 
 
-echo "Downloading and unzipping DHS_OOC model checkpoints"
-mkdir dhs_ooc
-for model in ${DHS_OOC_MODELS[@]}
+echo "Downloading and unzipping Yeh et al. Multi-spectral In-Country Model Checkpoints"
+mkdir ms_incountry
+for model in ${MS_INCOUNTRY_MODELS[@]}
 do
     echo "Downloading model ${model}"
     url="${BASE_GITHUB_URL}/${model}.zip"
-    wget --no-verbose --show-progress -P dhs_ooc ${url}
+    wget --no-verbose --show-progress -P ms_incountry ${url}
 
     echo "Unzipping model ${model}"
-    unzip "dhs_ooc/${model}.zip" -d "dhs_ooc/${model}"
-done
-
-
-echo "Downloading and unzipping DHS_Incountry model checkpoints"
-mkdir dhs_incountry
-for model in ${DHS_INCOUNTRY_MODELS[@]}
-do
-    echo "Downloading model ${model}"
-    url="${BASE_GITHUB_URL}/${model}.zip"
-    wget --no-verbose --show-progress -P dhs_incountry ${url}
-
-    echo "Unzipping model ${model}"
-    unzip "dhs_incountry/${model}.zip" -d "dhs_incountry/${model}"
+    unzip "ms_incountry/${model}.zip" -d "ms_incountry/${model}"
+    rm "ms_incountry/${model}.zip"
 done

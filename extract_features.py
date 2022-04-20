@@ -30,9 +30,9 @@ from utils import batcher, tfrecord_paths_utils
 from models.resnet_model import Hyperspectral_Resnet
 from utils.run import check_existing, run_extraction_on_models
 
-# TODO: Define TFRecord_DIR
+
 OUTPUTS_ROOT_DIR = 'outputs'
-INPUTS_DIR = 'data/tfrecords_test/*'
+INPUTS_DIR = 'data/tfrecords'
 
 
 # ====================
@@ -47,18 +47,12 @@ IS_TRAINING = False
 CACHE = False
 
 MULTISPECTRAL_MODELS: list[str] = [
-    # Paths to checkpoints for multispectral models from Yeh et al. 2020
-    'dhs_ooc/DHS_OOC_A_ms_samescaled_b64_fc01_conv01_lr0001',
-    'dhs_ooc/DHS_OOC_B_ms_samescaled_b64_fc001_conv001_lr0001',
-    'dhs_ooc/DHS_OOC_C_ms_samescaled_b64_fc001_conv001_lr001',
-    'dhs_ooc/DHS_OOC_D_ms_samescaled_b64_fc001_conv001_lr01',
-    'dhs_ooc/DHS_OOC_E_ms_samescaled_b64_fc01_conv01_lr001',
-
-    'dhs_incountry/DHS_Incountry_A_ms_samescaled_b64_fc01_conv01_lr001',
-    'dhs_incountry/DHS_Incountry_B_ms_samescaled_b64_fc1_conv1_lr001',
-    'dhs_incountry/DHS_Incountry_C_ms_samescaled_b64_fc1.0_conv1.0_lr0001',
-    'dhs_incountry/DHS_Incountry_D_ms_samescaled_b64_fc001_conv001_lr0001',
-    'dhs_incountry/DHS_Incountry_E_ms_samescaled_b64_fc001_conv001_lr0001'
+    # Paths to checkpoints for in-country multi-spectral models from Yeh et al. (2020)
+    'ms_incountry/DHS_Incountry_A_ms_samescaled_b64_fc01_conv01_lr001',
+    'ms_incountry/DHS_Incountry_B_ms_samescaled_b64_fc1_conv1_lr001',
+    'ms_incountry/DHS_Incountry_C_ms_samescaled_b64_fc1.0_conv1.0_lr0001',
+    'ms_incountry/DHS_Incountry_D_ms_samescaled_b64_fc001_conv001_lr0001',
+    'ms_incountry/DHS_Incountry_E_ms_samescaled_b64_fc001_conv001_lr0001'
 ]
 
 # choose which GPU to run on
@@ -101,7 +95,7 @@ def get_batcher(tfrecord_dir: str, ls_bands: str, nl_band: str, num_epochs: int,
     - size: int, length of dataset
     - feed_dict: dict, feed_dict for initializing the dataset iterator
     """
-    tfrecord_paths = glob(tfrecord_dir)
+    tfrecord_paths = glob(os.path.join(tfrecord_dir, '*', '*.tfrecord.gz'))
 
     size = len(tfrecord_paths)
     tfrecord_paths_ph = tf.placeholder(tf.string, shape=[size])
@@ -194,4 +188,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-
