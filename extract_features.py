@@ -44,7 +44,7 @@ IS_TRAINING = False
 
 # set CACHE = True for faster feature extraction on multiple models
 # only if you have enough RAM (>= 50 GB)
-CACHE = False
+CACHE = False  # TODO: Set to True for full extraction
 
 MULTISPECTRAL_MODELS: list[str] = [
     # Paths to checkpoints for in-country multi-spectral models from Yeh et al. (2020)

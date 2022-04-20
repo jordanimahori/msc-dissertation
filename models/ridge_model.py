@@ -6,21 +6,21 @@ import os
 
 
 # ============== PARAMETERS ===============
-FEATURE_DIR = '../testing/dhs_features'
 MODEL_FOLDS = ['A', 'B', 'C', 'D', 'E']
-
+FEATURE_DIR = 'outputs/extracted_features'
 
 # Load Model Weights
-npz = np.load('../testing/dhs_features/incountry_resnet_ms/ridge_weights.npz')
+npz = np.load('outputs/ridge_weights.npz')
 weights_dict = {}
 for key, value in npz.items():
     weights_dict[key] = value
 
+# TODO: Modify this or the extract features script to fetch features from model dir
 # Load Features and Predictions for Each Model
 features_dict = {}
 predictions_dict = {}
 for fold in MODEL_FOLDS:
-    features_path = os.path.join(FEATURE_DIR, f'incountry_features_{fold.lower()}.npz')
+    features_path = os.path.join(FEATURE_DIR, f'features_{fold}.npz')
     npz = np.load(features_path)
     features_dict[fold] = npz['features']
     predictions_dict[fold] = npz['preds']
@@ -47,6 +47,9 @@ def predict_assets(feature_dict: dict,
             output[j] = weights @ obs + bias
         predictions.append(output)
     return np.mean(predictions, axis=0)
+
+
+predicted_assets = predict_assets(features_dict, weights_dict)
 
 
 """
