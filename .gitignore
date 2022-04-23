@@ -8,7 +8,10 @@ __pycache__*
 # Ignoring anything in data/ directory
 data/*
 
-# Ignoring scripts used for prototyping other functions
+# Ignoring scripts used for prototyping
 scratchpad.py
+
+# Ignoring select directories
 testing/*
-outputs/
+outputs/ms_incountry/*
+outputs/extracted_features/*
