@@ -27,11 +27,13 @@ for fold in MODEL_FOLDS:
     npz = np.load(features_path)
     features_dict[fold] = npz['features']
     labels_dict[fold] = npz['labels']
+    years_dict[fold] = npz['years']
 
 
 def predict_assets(feature_dict: dict,
                    weight_dict: dict,
-                   label_dict: dict):
+                   label_dict: dict,
+                   year_dict: dict):
     """
     Args:
         - feature_dict: Features to be used for prediction
@@ -42,12 +44,16 @@ def predict_assets(feature_dict: dict,
         - mean_prediction: Array of mean of predictions from all models
     """
     labels = []
+    years = []
     for i in range(len(label_dict['A'])):
         # Assert that labels are all in order
         assert label_dict['A'][i] == label_dict['B'][i] == label_dict['C'][i] == label_dict['D'][i] == \
                label_dict['E'][i]
+        assert year_dict['A'][i] == year_dict['B'][i] == year_dict['C'][i] == year_dict['D'][i] == year_dict['E'][i]
         tile_id = str(int(label_dict['A'][i]))
+        year = int(year_dict['A'][i])
         labels.append(tile_id)
+        years.append(year)
 
     predictions = []
     for i in MODEL_FOLDS:
@@ -59,8 +65,8 @@ def predict_assets(feature_dict: dict,
             obs = features[j].reshape(512, 1)
             output[j] = weights @ obs + bias
         predictions.append(output)
-    mean_prediction = np.mean(predictions, axis=0).tolist()
-    return mean_prediction, labels
+    mean_predictions = np.mean(predictions, axis=0).tolist()
+    return mean_predictions, labels, years
 
 
 def get_ring_ids(rings):
@@ -87,7 +93,7 @@ def get_ring_ids(rings):
 # ==================== INFERENCE =====================
 
 # Predict household material assets from extracted features using weights from ridge regression
-predicted_assets, tile_ids = predict_assets(features_dict, weights_dict, labels_dict)
+predicted_assets, tile_ids, years = predict_assets(features_dict, weights_dict, labels_dict)
 
 # Get mapping from tile_id to which concentric ring the tile falls into
 ring_map = get_ring_ids(2)
@@ -98,7 +104,7 @@ dataframe['assets'] = predicted_assets
 dataframe['deal_id'] = [tile_id[0:4] for tile_id in tile_ids]
 dataframe['tile_id'] = [tile_id[4:8] for tile_id in tile_ids]
 dataframe['level'] = [ring_map[int(tile_id[4:8])] for tile_id in tile_ids]
-
+dataframe['years'] = years
 
 # Save dataframe in data directory
 dataframe.to_csv("data/asset_predictions.csv")
