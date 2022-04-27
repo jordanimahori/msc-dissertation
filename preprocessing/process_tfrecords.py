@@ -61,8 +61,9 @@ def process_tfrecords(csv_path: str, input_dir: str, processed_dir: str):
             year = int(tfrecord[-13:-9])                   # extracts the year from the TFRecord name
 
             for i, img_dict in observation_dict.items():
-                output_path = os.path.join(output_dir, f'{deal_id}_{year}_{i:04d}.tfrecord.gz')  # NRINGS must be < 10
-                scalar_dict = {'lat': lat[k], 'lon': lon[k], 'year': year, 'wealthpooled': float(f'{deal_id}{i:04d}')}
+                output_path = os.path.join(output_dir, f'{deal_id}_{year}_{i:03d}.tfrecord.gz')
+                # Float32 cannot represent integers greater than 16777216 without rounding.
+                scalar_dict = {'lat': lat[k], 'lon': lon[k], 'year': year, 'wealthpooled': float(f'{deal_id}{i:03d}')}
                 example = encode_feature_dict(img_dict, scalar_dict)
 
                 with tf.io.TFRecordWriter(output_path) as writer:
