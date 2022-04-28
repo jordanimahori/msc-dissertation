@@ -105,7 +105,7 @@ dataframe['assets'] = predicted_assets
 dataframe['deal_id'] = [tile_id[0:4] for tile_id in tile_ids]
 dataframe['tile_id'] = [tile_id[4:8] for tile_id in tile_ids]
 dataframe['level'] = [ring_map[int(tile_id[4:8])] for tile_id in tile_ids]
-dataframe['years'] = years
+dataframe['year'] = years
 
 # Save dataframe in data directory
 dataframe.to_csv("data/asset_predictions.csv")
