@@ -11,6 +11,14 @@
 # patches around its centroid and export them in TFRecord format so that we can generate estimates of household material
 # assets using model weights from Yeh et al. (2020).
 
+# Spatial resolution is at the 30m per pixel at the border, however this varies with latitude. At higher latitudes,
+# represent a smaller area. (Could this be due to the projection of the imagery?) This difference can be significant,
+# declining to approximately 25.5m per pixel at northern or southern latitudes (e.g. noticed the issue for northern tip
+# of Tunisia and southern tip of South Africa.
+
+# This function is still problematic for certain observations on the northern or southern extremes of SSA. I believe
+# this is caused by spatial resolution, so better logic to adjust for these changes is required.
+
 # In order to filter Earth Engine image collections to show an area containing at least the centre cell + 2 adjacent
 # rings of cells, we need images patches for an area of radius ~7.6km x 2.5, or a box of approximately 46km x 46km,
 # centred around each industrial agriculture development. This script creates these boxes and generates a file which
@@ -38,7 +46,7 @@ from utils import ee_utils
 EXPORT = 'gcs'                           # to export to Google Drive, set as: 'drive'
 BUCKET = 'msc-imagery'                   # to export to Google Drive, set as: None
 EXPORT_FOLDER = 'tfrecords_raw'          # directory name in which to store processed TFRecords
-CSV_PATH = 'data/earthengine_locs.csv'   # locations of centroids for each observation
+CSV_PATH = 'data/intermediate/earthengine_locs.csv'   # locations of centroids for each observation
 
 START_YEAR = 1985      # first year of range over which to generate image patches
 END_YEAR = 2021        # last year of range over which to generate image patches
