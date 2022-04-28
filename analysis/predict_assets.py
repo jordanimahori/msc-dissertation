@@ -22,6 +22,7 @@ for key, value in npz.items():
 # Load Features and Predictions for Each Model
 features_dict = {}
 labels_dict = {}
+years_dict = {}
 for fold in MODEL_FOLDS:
     features_path = FEATURES_PATHS[fold]
     npz = np.load(features_path)
@@ -93,7 +94,7 @@ def get_ring_ids(rings):
 # ==================== INFERENCE =====================
 
 # Predict household material assets from extracted features using weights from ridge regression
-predicted_assets, tile_ids, years = predict_assets(features_dict, weights_dict, labels_dict)
+predicted_assets, tile_ids, years = predict_assets(features_dict, weights_dict, labels_dict, years_dict)
 
 # Get mapping from tile_id to which concentric ring the tile falls into
 ring_map = get_ring_ids(2)
