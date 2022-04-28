@@ -256,10 +256,6 @@ locations %>%
 # ------------------------------ SAVE ---------------------------------
 
 
-# Convert to sf object
-lsla <- st_as_sf(lsla, coords=c("lon", "lat"), crs=4326)
-
-
 # Save files for later use
 saveRDS(lsla, file="./data/lsla.RData")
 saveRDS(locations, file="./data/locations.RData")
