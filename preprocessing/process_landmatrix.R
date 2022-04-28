@@ -250,7 +250,7 @@ locations <- locations %>%
 # Creating CSV with countries & coordinates for Earth Engine exports
 locations %>%
   select(deal_id,  lat, lon) %>%
-  write_sf("./data/earthengine_locs.csv", delete_layer = TRUE)
+  write_sf("./data/earthengine_locs.csv", append=FALSE, delete_layer = TRUE)
 
 
 # ------------------------------ SAVE ---------------------------------
