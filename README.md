@@ -1,51 +1,53 @@
 # Industrial Agriculture and Local Economic Growth: Evidence from Historical Satellite Imagery
 
 
-**THIS IS A WORK IN PROGRESS.**
+This repository contains the code required to reproduce my thesis for the M.Sc. in Economics for Development at the University of Oxford. **I am actively working on it, and significant errors are likely to exist.** The final paper will be available here after July 2022 once it has been completed and approved for sharing publicly by the Examination Committee. 
 
 
-This repository contains the code required to reproduce my thesis for the MSc in Economics for Development at the University of Oxford. It is currently under active development and significant errors are likely to exist. This repository will contain scripts for data ingestion and cleaning, generating 3-year Landsat
-mosaics and predicting an index of household durable assets from satellite imagery. It will also contain scripts to reproduce each map and chart and my final causal estimates for the impact of industrial agriculture developments on local economic growth.
-
-The final paper will be available here after July 2022 once it has been completed and approved for sharing by the MSc Dissertation Committee. 
+**Acknowledgements:** Estimates of household durable assets were generated using model weights from [Yeh et al. (2020)](https://www.nature.com/articles/s41467-020-16185-w), which Christopher Yeh generously made available on [GitHub](https://github.com/chrisyeh96/africa_poverty_clean) along with other helpful functions which I greatly benefited from. Many of the functions I wrote for this dissertation for generating mosaics of Landsat imagery, exporting image patches, and processing the resulting TFRecords were based in large part on those originally written by Chris and his team. All errors are of course my own.
 
 
-**Acknowledgements:** The estimates of the household durable assets index were generated using model weights from [Yeh et al. (2020)](https://www.nature.com/articles/s41467-020-16185-w), and which Christopher Yeh generously makes available on [Github](https://github.com/chrisyeh96/africa_poverty_clean). 
+### Abstract
+Large-scale agriculture developments are an increasingly important feature of rural economies in sub-Saharan Africa, although their effect on local economic growth is both theoretically and empirically ambiguous. In my dissertation, I study the effect that these openings have on changes in household assets in the areas surrounding 617 sites across the continent. I combine data on land acquisitions with village-level estimates of household assets which I obtain using a convolutional neural network to extract features predictive of these assets from historical satellite imagery collected by NASA's Landsat program for the period between 1985 and 2021. I then use these estimates in a differences-in-differences model, where I find that industrial agriculture openings have a modest and positive effect on household assets in areas immediately adjacent to these developments. Using a small sample of non-agricultural land acquisitions, I further present evidence suggestive of significant heterogeneity in the effect of new industrial developments. While food and non-food agriculture continue to have a positive effect, land acquisitions for the purpose of energy, forestry and mining have a moderate negative effect. I conclude with a discussion of the potential as well as the concerns for using remote-sensing and deep-learning derived predictions to answer causal questions in economics.
+
+
 
 
 ## Overview
-My dissertation aims to estimate how the opening of large-scale industrial agriculture developments across sub-Saharan Africa affects the local growth rate in household durable assets in subsequent years. I will first generate a series of estimates of household durable assets for each 3-year period from 1986 to 2022 for every 6.25km x 6.25km cell in the areas surrounding industrial agriculture developments in my dataset using a pre-trained model from Yeh et al. (2020) and historical satellite imagery from NASA’s Landsat program. I will then use those predictions within a stacked differences-in-differences model, where the unit of observation is the cell and treatment is defined as whether an industrial agriculture development is operational within a to-be-determined distance from the cell centroid. The counterfactual will be formed of cells which receive treatment before 2022, but have not yet received treatment at the year under comparison. 
-
-
-## Getting Started
 
 **Complete instructions forthcoming.**
 
-The processed data needed to reproduce my analysis is available in RData format. Scripts for all the plots included in my dissertation, as well as the models presented in the dissertation are available in the `analysis` directory. 
+There are two sources of data used in my dissertation: 
+- Historical Landsat Satellite Imagery, available from [Earth Engine](https://developers.google.com/earth-engine/datasets/catalog/landsat)
+- Dataset of Large-Scale Land Acquisitions from the [LandMatrix](https://landmatrix.org)
 
-If you want to reproduce these findings from raw data, you'll need to first: 
-- Clean and merge the data contained in the LandMatrix CSVs. 
-- Generate mosaics for each 3-year period for the scenes intersecting a 40x40km region surrounding each industrial agriculture development.
-- Extract patches of 255x255 pixel cells surrounding each development in TFRecord format. 
-- Generate predictions for household durable assets in each cell using Yeh et al. (2020)'s model. 
+Both datasets require significant processing before they can be used by the scripts in the analysis directory. Scripts to generate mosaics and export image patches, process the TFRecords, and clean the LandMatrix deals are located in the preprocessing directory. Due to dependencies between the script, they must be run in order, and each step must be completed prior to starting the next step. 
 
-Start by installing R and RStudio. The following packages are required: 
-```
-- dplyr
-- magrittr
-- sf
-- forcats
-```
-Once this is done, run the `prep_landmatrix.R` script to generate the cleaned RData files for large-scale land acquisitions and the exports CSV with the locations of LSLAs needed by Google Earth Engine.
- 
-Next, you'll need to ensure you have a working install of Python 3, with the following packages: 
-```
-- pandas
-- ee
+Note there is a significant amount of time required for processing. Exporting image patches takes ~15 days, and due to limits on active tasks must be run in batches. Once image patches are exported, processing the TFRecords takes ~8hrs and extracting features takes ~4hrs to complete on a machine similar to that listed below. Inference was significantly accelerated by the GPU, and without it feature extraction will take considerably longer. You will need at least 750GB of storage available to download and process the dataset, which is 350GB in its final size. 
 
-```
-For the full list or to automatically set-up the environment, install Conda and from the root of this repository, run: `conda env create -f env.yml`
-This will create a new Conda environment with all of the packages listed in env.yml. 
+The final dataset which I use in my analysis is available in the `data/` directory, but due to licensing and practical reasons, I cannot share the raw files. They can be obtained for free from the Google Earth Engine (requires registration) and the LandMatrix, respectively. 
 
-To generate poverty estimates, you'll first need to install and configure Google Earth Engine, which is needed for generating cloud-free mosaics and export them in TFRecord format so that we can generate our predictions. 
+
+### Before you start: 
+
+You'll need Python3.7 and R > 4.0, along with several other packages in order to run everything. I recommend setting up a Conda environment, which you can do using the `env.yml` file.  
+
+
+You'll also need to sign up for an account with Google Earth Engine. 
+
+
+### STEPS
+
+To begin, we'll need to obtain the locations for each land acquisition that will eventually be a part of the dataset. To do this:
+
+1. Downloading the entire LandMatrix dataset in CSV form, which you can find from their website (TODO: Automate if possible). 
+2. Run the `process_landmatrix.R` script. 
+3. 
+
+
+
+
+
+
+
 
