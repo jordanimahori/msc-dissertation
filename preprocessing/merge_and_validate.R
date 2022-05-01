@@ -35,7 +35,9 @@ mdta$operational <- as_factor(as.integer(mdta$year >= mdta$year_operational))
 mdta$abandoned <- as_factor(as.integer(mdta$year >= mdta$year_abandoned))
 
 # Construct Years Since Signed/Active/Closed Variables
-# TBD...
+mdta$since_signed <- mdta$year - mdta$year_signed
+mdta$since_operational <- mdta$year - mdta$year_operational
+mdta$since_abandoned <- mdta$year - mdta$year_abandoned
 
 
 
