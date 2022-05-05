@@ -12,7 +12,7 @@ INPUT_DIR = 'data/tfrecords_raw'
 PROCESSED_DIR = 'data/tfrecords'
 
 # Specify CSV file with locations to export
-CSV_PATH = './data/earthengine_locs.csv'
+CSV_PATH = './data/intermediate/earthengine_locs.csv'
 
 # Specify image bands.
 FEATURES = ['BLUE', 'GREEN', 'LAT', 'LON', 'NIR', 'RED', 'SWIR1', 'SWIR2', 'TEMP1']
