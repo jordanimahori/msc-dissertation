@@ -29,6 +29,7 @@ library(miceadds)
 library(dplyr)
 library(forcats)
 library(eventStudy)
+library(stargazer)
 
 
 
@@ -128,27 +129,28 @@ a8 <- lm.cluster(data = mdta,
 #---------- FOOD AND NON-FOOD AGRICULTURE
 
 
-# All: Treatment = Operational; Controls + No FEs
+# Food-Nonfood: Treatment = Operational; Controls + No FEs
 b1 <- lm.cluster(data = agriculture_food_nonfood, 
                  formula = assets ~ operational + level_fe*operational + 
                    area_contracted + area_in_operation + deal_scope,
                  cluster = 'deal_id')
 
-# All:  Treatment = Operational; Controls + Year & Deal FEs
+# Food-Nonfood:  Treatment = Operational; Controls + Year & Deal FEs
 b2 <- lm.cluster(data = agriculture_food_nonfood, 
                  formula = assets ~ operational + level_fe*operational + 
                    area_contracted + area_in_operation + deal_scope +
                    year_fe + deal_id,
                  cluster = 'deal_id')
 
-# All: Treatment = Operational; Controls + Year & Country FEs + Investment Type
+
+# Food-Nonfood: Treatment = Operational; Controls + Year & Country FEs + Investment Type
 b3 <- lm.cluster(data = agriculture_food_nonfood, 
                  formula = assets ~ operational + level_fe*operational + 
                    area_contracted + area_in_operation + deal_scope +
                    year_fe + country + operational*investment_type,
                  cluster = 'deal_id')
 
-# All:  Treatment = Operational + Since Operational; Controls + Year & Deal FEs
+# Food-Nonfood:  Treatment = Operational + Since Operational; Controls + Year & Deal FEs
 b4 <- lm.cluster(data = agriculture_food_nonfood, 
                  formula = assets ~ operational + level_fe*operational + 
                    since_operational*level_fe + since_operational*level_fe*operational +
@@ -158,27 +160,27 @@ b4 <- lm.cluster(data = agriculture_food_nonfood,
 
 
 
-# All: Treatment = Signed; Controls + No FEs
+# Food-Nonfood: Treatment = Signed; Controls + No FEs
 b5 <- lm.cluster(data = agriculture_food_nonfood, 
                  formula = assets ~ signed + level_fe*signed + 
                    area_contracted + area_in_operation + deal_scope,
                  cluster = 'deal_id')
 
-# All:  Treatment = Signed; Controls + Year & Deal FEs
+# Food-Nonfood:  Treatment = Signed; Controls + Year & Deal FEs
 b6 <- lm.cluster(data = agriculture_food_nonfood, 
                  formula = assets ~ signed + level_fe*signed + 
                    area_contracted + area_in_operation + deal_scope +
                    year_fe + deal_id,
                  cluster = 'deal_id')
 
-# All: Treatment = Signed; Controls + Year & Country FEs + Investment Type
+# Food-Nonfood: Treatment = Signed; Controls + Year & Country FEs + Investment Type
 b7 <- lm.cluster(data = agriculture_food_nonfood, 
                  formula = assets ~ signed + level_fe*signed + 
                    area_contracted + area_in_operation + deal_scope +
                    year_fe + country + signed*investment_type,
                  cluster = 'deal_id')
 
-# All: Treatment = Signed + Since Signed; Controls + Year & Deal FEs
+# Food-Nonfood: Treatment = Signed + Since Signed; Controls + Year & Deal FEs
 b8 <- lm.cluster(data = agriculture_food_nonfood, 
                  formula = assets ~ signed + level_fe*signed +
                    since_signed*level_fe + since_signed*level_fe*signed +
@@ -190,27 +192,27 @@ b8 <- lm.cluster(data = agriculture_food_nonfood,
 
 #---------- AGRO-INDUSTRY
 
-# All: Treatment = Operational; Controls + No FEs
+# Agro-Industry: Treatment = Operational; Controls + No FEs
 c1 <- lm.cluster(data = agriculture_industrial, 
                  formula = assets ~ operational + level_fe*operational + 
                    area_contracted + area_in_operation + deal_scope,
                  cluster = 'deal_id')
 
-# All:  Treatment = Operational; Controls + Year & Deal FEs
+# Agro-Industry:  Treatment = Operational; Controls + Year & Deal FEs
 c2 <- lm.cluster(data = agriculture_industrial, 
                  formula = assets ~ operational + level_fe*operational + 
                    area_contracted + area_in_operation + deal_scope +
                    year_fe + deal_id,
                  cluster = 'deal_id')
 
-# All: Treatment = Operational; Controls + Year & Country FEs + Investment Type
+# Agro-Industry: Treatment = Operational; Controls + Year & Country FEs + Investment Type
 c3 <- lm.cluster(data = agriculture_industrial, 
                  formula = assets ~ operational + level_fe*operational + 
                    area_contracted + area_in_operation + deal_scope +
                    year_fe + country + operational*investment_type,
                  cluster = 'deal_id')
 
-# All:  Treatment = Operational + Since Operational; Controls + Year & Deal FEs
+# Agro-Industry:  Treatment = Operational + Since Operational; Controls + Year & Deal FEs
 c4 <- lm.cluster(data = agriculture_industrial, 
                  formula = assets ~ operational + level_fe*operational + 
                    since_operational*level_fe + since_operational*level_fe*operational +
@@ -220,27 +222,27 @@ c4 <- lm.cluster(data = agriculture_industrial,
 
 
 
-# All: Treatment = Signed; Controls + No FEs
+# Agro-Industry: Treatment = Signed; Controls + No FEs
 c5 <- lm.cluster(data = agriculture_industrial, 
                  formula = assets ~ signed + level_fe*signed + 
                    area_contracted + area_in_operation + deal_scope,
                  cluster = 'deal_id')
 
-# All:  Treatment = Signed; Controls + Year & Deal FEs
+# Agro-Industry:  Treatment = Signed; Controls + Year & Deal FEs
 c6 <- lm.cluster(data = agriculture_industrial, 
                  formula = assets ~ signed + level_fe*signed + 
                    area_contracted + area_in_operation + deal_scope +
                    year_fe + deal_id,
                  cluster = 'deal_id')
 
-# All: Treatment = Signed; Controls + Year & Country FEs + Investment Type
+# Agro-Industry: Treatment = Signed; Controls + Year & Country FEs + Investment Type
 c7 <- lm.cluster(data = agriculture_industrial, 
                  formula = assets ~ signed + level_fe*signed + 
                    area_contracted + area_in_operation + deal_scope +
                    year_fe + country + signed*investment_type,
                  cluster = 'deal_id')
 
-# All: Treatment = Signed + Since Signed; Controls + Year & Deal FEs
+# Agro-Industry: Treatment = Signed + Since Signed; Controls + Year & Deal FEs
 c8 <- lm.cluster(data = agriculture_industrial, 
                  formula = assets ~ signed + level_fe*signed +
                    since_signed*level_fe + since_signed*level_fe*signed +
@@ -474,6 +476,15 @@ summary(rd4)  # A8 on subset of only food agriculture
 
 # -------------------------- NOTES / TODO ---------------------------
 
+# Check for messy data. E.g. signed after operational. Large values of signed 
+# or operational. Signed before 1985.
+
+# Check interaction with measure of property rights in that country in that year
+# Check interaction with dummy for small and large development
+# Check interaction with food type? 
+
+# Check that for those observations that were dropped for not having a signed 
+# or operational year, I cannot find the year manually. 
 
 # B is my preferred inclusion criteria
 

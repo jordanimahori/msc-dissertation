@@ -7,6 +7,8 @@ setwd("~/Projects/Dissertation/agro-welfare")
 
 library(dplyr)
 library(ggplot2)
+library(ggspatial)
+library(rosm)
 library(sf)
 
 
@@ -14,12 +16,14 @@ library(sf)
 # ------------------------------ DATA -------------------------------
 
 # Read pre-cleaned data into memory
-lsla <- readRDS("data/lsla.RData")
+lsla <- readRDS("data/intermediate/lsla.RData")
 areas <- readRDS("data/intermediate/areas.RData")
 locations <- readRDS("data/intermediate/locations.RData")
 
 mdta <- readRDS("data/mdta.RData")
-unfiltered_data <- readRDS("data/intermediate/unfiltered_data.RData")
+unfiltered_data <- readRDS("data/robustness/unfiltered_data.RData")
+robust <- readRDS("data/robustness/robust.RData")
+outliers <- readRDS("data/robustness/outliers.RData")
 
 
 # Mean Annual Asset Wealth by Level
@@ -33,15 +37,6 @@ yearly_assets <- mdta %>%
   mutate(growth = (mean_assets - lag(mean_assets, order_by = year))/mean_assets, 
          diff = mean_assets - lag(mean_assets, order_by = year))
 
-
-
-# Identify unusually extreme differences
-unusual <- filter(yearly_assets, diff > 0.4 | diff < -0.4)
-table(unusual$year)
-
-
-# Remove unusual results from data
-robust <- anti_join(yearly_assets, unusual, by=c('deal_id', 'year', 'level_fe'))
 
 
 # --------------- DISTRIBUTION TREATMENT AND OUTCOMES --------------------
@@ -223,7 +218,7 @@ ggplot(data = yearly_assets, aes(x = year, y = mean_assets, group=level_fe)) +
   geom_smooth(method = 'loess', formula = y ~ x) + 
   theme_light()
 
-# Fitted Linaer of Mean Assets, by Level, Year >= 2000
+# Fitted Linear of Mean Assets, by Level, Year >= 2000
 yearly_assets %>% 
   filter(year >= 2000) %>%
   ggplot(aes(x = year, y = mean_assets, group=level_fe)) +
@@ -262,19 +257,59 @@ yearly_assets %>%
   geom_smooth(method = 'loess', formula = y ~ x) + 
   theme_light()
 
-# Fitted Local Polynomial Model of Mean Asset Diff by Year Since Operational, Year >= 2000
+# Fitted Local Polynomial Model of Mean Asset Diff by Year Since Operational, Year > 2000
 yearly_assets %>% 
-  filter(year >= 2000 & is.na(signed) == FALSE & level_fe == 0 & 
+  filter(year >= 2003 & is.na(signed) == FALSE & level_fe == 0 & 
            since_signed < 20 & since_signed > -20, growth > -0.5 & growth < 0.5) %>%
   ggplot(aes(x = since_signed, y = diff)) +
   geom_smooth(method = 'loess', formula = y ~ x) + 
   theme_light()
 
+# Fitted Linear Model of Mean Asset Diff by Year Signed Signed, Year > 2000
+yearly_assets %>% 
+  filter(year >= 2003 & is.na(signed) == FALSE & is.na(operational) & level_fe == 0 & 
+           since_signed < 10 & since_signed > -10, growth > -0.5 & growth < 0.5) %>%
+  ggplot(aes(x = since_signed, y = diff, group = signed)) +
+  geom_smooth(method = 'lm', formula = y ~ x) + 
+  geom_point(aes(group = operational), alpha = 0.5) +
+  theme_light()
 
 
 
 
+# Assets In Current Year Compared to Lagged Assets, By Year, Level = 0; Unfiltered
+unfiltered_data %>%
+  filter(level_fe == 0, year != 1985) %>%
+  ggplot(aes(x = assets, y = assets_lag_1)) +
+  geom_point(alpha = 0.5) +
+  facet_grid(~ year_fe) +
+  theme_light()
 
+# Assets In Current Year Compared to Lagged Assets, Post-2000, Level = 0; Unfiltered
+unfiltered_data %>%
+  filter(level == 0) %>%
+  ggplot(aes(x = assets, y = assets_lag_1)) +
+  geom_point(alpha = 0.5) +
+  facet_grid(~ post_2003) +
+  theme_light()
+
+
+
+# Assets In Current Year Compared to Lagged Assets, By Year, Level = 0; Windsorized
+mdta %>%
+  filter(level_fe == 0, year != 1985) %>%
+  ggplot(aes(x = assets, y = assets_lag_1)) +
+  geom_point(alpha = 0.5) +
+  facet_grid(~ year_fe) +
+  theme_light()
+
+# Assets In Current Year Compared to Lagged Assets, Post-2000, Level = 0; Windsorized
+mdta %>%
+  filter(level == 0) %>%
+  ggplot(aes(x = assets, y = assets_lag_1)) +
+  geom_point(alpha = 0.5) +
+  facet_grid(~ post_2003) +
+  theme_light()
 
 
 
@@ -286,7 +321,8 @@ locations %>%
   filter(year_signed > 1970) %>%
   filter(investment_type %in% c("Biofuels", "Food", "Non-food", "Livestock")) %>% 
   ggplot() + 
-    geom_sf(size=0.5, colour='#1f78b4') +
+    annotation_map_tile(type = "osm", zoom=5) +
+    geom_sf(size=1, colour='#e34a33', cache=TRUE) +
     coord_sf() +
     theme_light()
 
@@ -294,8 +330,9 @@ locations %>%
 locations %>%
   filter(year_signed > 1970) %>%
   filter(investment_type %in% c("Biofuels", "Food", "Non-food", "Livestock")) %>% 
-  ggplot() + 
-    geom_sf(aes(size=size_under_contract*0.000005, colour='#1f78b4')) +
+  ggplot() +
+    annotation_map_tile(type = "osm", zoom=5, cache=TRUE) +
+    geom_sf(aes(size=area_contracted*0.000004, colour='#e34a33')) +
     coord_sf() +
     theme_light()
 
