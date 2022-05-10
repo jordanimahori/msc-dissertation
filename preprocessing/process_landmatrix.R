@@ -26,18 +26,18 @@ library(sf)
 
 
 # Tabular data on land acquisitions (Source: LandMatrix) 
-filepaths = list.files("./data/landmatrix/", pattern=".csv")
+filepaths = list.files("./data/raw/landmatrix/", pattern=".csv")
 datasets = list()
 
 for (file in filepaths) {
-  datasets[[gsub(".csv", "", file)]] <- read_delim(paste("data/landmatrix/", file, sep=""), 
+  datasets[[gsub(".csv", "", file)]] <- read_delim(paste("data/raw/landmatrix/", file, sep=""), 
                                                    show_col_types=FALSE)   #(1)
 }
 
 
 # GeoJSON data on land acquisitions (Source: LandMatrix)
-locations <- st_read("./data/landmatrix/locations.geojson", quiet=TRUE)
-areas <- st_read("./data/landmatrix/areas.geojson", quiet=TRUE)
+locations <- st_read("./data/raw/landmatrix/locations.geojson", quiet=TRUE)
+areas <- st_read("./data/raw/landmatrix/areas.geojson", quiet=TRUE)
 
 
 
@@ -164,7 +164,7 @@ lsla$investment_type <- lsla$intention_of_investment %>%
 lsla$crop_type <- lsla$`crops_area/yield/export` %>%
   str_extract(pattern="[A-Za-z-\\(\\) ,/]{1,}$")
 
-lsla$investment_type <- replace_na(lsla$investment_type, "Other")
+lsla$investment_type <- replace_na(lsla$investment_type, "Other")  # LOOK INTO WHY THIS IS HERE
 
 
 # Group investment types into broader categories
@@ -172,14 +172,14 @@ for (i in 1:length(lsla$investment_type)) {
   candidate <- lsla$investment_type[i]
   if (str_detect(candidate, pattern="(Food crops)|(Agriculture)")) {
     lsla$investment_type[i] <- "Food"
-  } else if (str_detect(candidate, pattern = "Non-food")) {
+  } else if (str_detect(candidate, pattern = "(Non-food)")) {
     lsla$investment_type[i] <- "Non-food"
+  } else if (str_detect(candidate, pattern = "Livestock")) {
+    lsla$investment_type[i] <- "Livestock"
   } else if (str_detect(candidate, pattern = "Biofuels")) {
     lsla$investment_type[i] <- "Biofuels"
   } else if (str_detect(candidate, pattern = "(Forest)|(Timber)|(Conservation)")) {
     lsla$investment_type[i] <- "Forestry"
-  } else if (str_detect(candidate, pattern = "Livestock")) {
-    lsla$investment_type[i] <- "Livestock"
   } else if (str_detect(candidate, pattern = "Mining")) {
     lsla$investment_type[i] <- "Mining"
   } else if (str_detect(candidate, pattern = "Energy")) {
@@ -194,6 +194,17 @@ for (i in 1:length(lsla$investment_type)) {
 lsla$investment_type <- as_factor(lsla$investment_type)
 
 
+# Set investment_type according to inferred type based on crop type
+lsla$investment_type[lsla$deal_id == 3214] <- "Forestry"
+lsla$investment_type[lsla$deal_id == 8906] <- "Forestry"
+lsla$investment_type[lsla$deal_id == 8452] <- "Food"
+
+
+# Reclassify Palm Oil Plantations as Food Agriculture + Create Dummy
+lsla$investment_type[lsla$crop_type == "Oil Palm"] <- "Food"
+lsla$oil_palm <- ifelse(str_detect(lsla$crop_type, pattern = "Oil Palm"), 1, 0)
+
+
 # Drop intermediate variables
 lsla <- lsla %>%
   select(!c(intention_of_investment, concluded, implementation_status, 
@@ -203,8 +214,15 @@ lsla <- lsla %>%
 # Drop observations missing locations or year information
 lsla <- lsla %>% 
   filter(!(is.na(lat) | is.na(lon))) %>%                   # Drop observations without locations
-  filter(is.na(year_signed) && is.na(year_operational))    # Drop observations without either signed or operational date
+  filter(!(is.na(year_signed) & is.na(year_operational)))    # Drop observations without either signed or operational date
 
+
+# Add indicator if spatial extent is available
+lsla$has_extent <- ifelse(lsla$deal_id %in% unique(areas$deal_id), 1, 0)
+
+
+# Set as missing contracted areas which are zero.
+lsla$area_contracted[lsla$area_contracted == 0] <- NA
 
 
 
@@ -236,10 +254,10 @@ locations <- locations %>%
 # Merge in additional deal data from tabular files
 areas <- areas %>%
   select(c(id, name, type, deal_id, country, region)) %>%
-  left_join(lsla, by="deal_id")
+  inner_join(lsla, by="deal_id")
 
 locations <- locations %>%
-  left_join(lsla, by="deal_id")
+  inner_join(lsla, by="deal_id")
 
 
 
@@ -257,9 +275,9 @@ lsla %>%
 
 
 # Save files for later use
-saveRDS(lsla, file="./data/lsla.RData")
-saveRDS(locations, file="./data/locations.RData")
-saveRDS(areas, file="./data/areas.RData")
+saveRDS(lsla, file="data/intermediate/lsla.RData")
+saveRDS(locations, file="data/intermediate/locations.RData")
+saveRDS(areas, file="data/intermediate/areas.RData")
 
 
 
