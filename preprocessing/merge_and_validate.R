@@ -65,6 +65,7 @@ mdta <- mdta %>%
   mutate(assets_lag_1 = lag(assets, n = 1, order_by = year), 
          assets_lag_2 = lag(assets, n = 2, order_by = year), 
          assets_lag_3 = lag(assets, n = 3, order_by = year),
+         assets_lead_1 = lead(assets, n = 1, order_by = year),
          signed_lag_1 = lag(signed, n = 1, order_by = year),
          signed_lag_2 = lag(signed, n = 2, order_by = year), 
          signed_lag_3 = lag(signed, n = 3, order_by = year),
@@ -81,8 +82,8 @@ mdta <- mdta %>%
 
 
 # Calculate Difference in Assets Since Previous Period
-mdta$diff <- mdta$assets - mdta$assets_lag_1
-
+mdta$diff_lag <- mdta$assets - mdta$assets_lag_1
+mdta$diff_lead <- mdta$assets - mdta$assets_lead_1
 
 
 
@@ -93,18 +94,24 @@ mdta$diff <- mdta$assets - mdta$assets_lag_1
 # Preserve copy of data for visualization before modifications
 unfiltered_data <- mdta
 
+
 # Identify observations which inexplicably have assets of 3.131557375, or which 
 # grew by more than 1 on the asset index scale since the subsequent period.
 outliers <- mdta %>%
   filter((assets > 3.1315 & assets < 3.1316) | (diff < -1) | (diff > 1))
 
+
 # Create dataset that drops all observations in the deal_id & year of an outlier
 robust <- mdta %>%
   anti_join(outliers, by=c('deal_id', 'year'))
 
+
 # Drop outliers from master dataset
 mdta <- mdta %>%
-  filter(!((assets > 3.1315 & assets < 3.1316) | (diff < -0.8) | (diff > 0.8)))
+  filter(!((diff_lag < -1) | (diff_lag > 1) | 
+             (diff_lead < -1) | (diff_lead > 1))) %>%  # Remove asset changes < 1
+  filter(assets > -1.874129 & assets < 1.452251)  # Remove the top and bottom 0.05%
+
 
 
 

@@ -172,12 +172,10 @@ for (i in 1:length(lsla$investment_type)) {
   candidate <- lsla$investment_type[i]
   if (str_detect(candidate, pattern="(Food crops)|(Agriculture)")) {
     lsla$investment_type[i] <- "Food"
-  } else if (str_detect(candidate, pattern = "(Non-food)")) {
+  } else if (str_detect(candidate, pattern = "(Non-food)|(Biofuels)")) {
     lsla$investment_type[i] <- "Non-food"
   } else if (str_detect(candidate, pattern = "Livestock")) {
     lsla$investment_type[i] <- "Livestock"
-  } else if (str_detect(candidate, pattern = "Biofuels")) {
-    lsla$investment_type[i] <- "Biofuels"
   } else if (str_detect(candidate, pattern = "(Forest)|(Timber)|(Conservation)")) {
     lsla$investment_type[i] <- "Forestry"
   } else if (str_detect(candidate, pattern = "Mining")) {
@@ -194,15 +192,22 @@ for (i in 1:length(lsla$investment_type)) {
 lsla$investment_type <- as_factor(lsla$investment_type)
 
 
-# Set investment_type according to inferred type based on crop type
-lsla$investment_type[lsla$deal_id == 3214] <- "Forestry"
-lsla$investment_type[lsla$deal_id == 8906] <- "Forestry"
-lsla$investment_type[lsla$deal_id == 8452] <- "Food"
+# Create dummies for types of crops
+lsla$palm_oil <- as_factor(ifelse(str_detect(lsla$crop_type, pattern = "Oil Palm"), 1, 0))
+lsla$rubber <- as_factor(ifelse(str_detect(lsla$crop_type, pattern = "Rubber"), 1, 0))
+lsla$staples <- as_factor(ifelse(str_detect(lsla$crop_type, pattern = "(Rice)|(Wheat)|(Corn)|(Casava)|(Soya)|(Beans)|(Potatoes)"), 1, 0))
 
 
-# Reclassify Palm Oil Plantations as Food Agriculture + Create Dummy
-lsla$investment_type[lsla$crop_type == "Oil Palm"] <- "Food"
-lsla$oil_palm <- ifelse(str_detect(lsla$crop_type, pattern = "Oil Palm"), 1, 0)
+# Reclassify Rubber Trees as Non-Food Agriculture
+lsla$investment_type[lsla$rubber == '1'] <- "Non-food"
+
+# Reclassify Palm Oil Plantations as Food Agriculture
+lsla$investment_type[lsla$oil_palm == '1'] <- "Food"
+
+
+# Manually reclassify investment_type to inferred type based on crop type
+lsla$investment_type[lsla$deal_id %in% c(3214, 8906)] <- "Forestry"
+lsla$investment_type[lsla$deal_id %in% c(8452, 5899, 1334, 8679)] <- "Food"
 
 
 # Drop intermediate variables
@@ -223,6 +228,10 @@ lsla$has_extent <- ifelse(lsla$deal_id %in% unique(areas$deal_id), 1, 0)
 
 # Set as missing contracted areas which are zero.
 lsla$area_contracted[lsla$area_contracted == 0] <- NA
+
+
+
+
 
 
 
