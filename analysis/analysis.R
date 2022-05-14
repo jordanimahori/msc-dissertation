@@ -138,10 +138,9 @@ b1 <- lm.cluster(data = agriculture_food_nonfood,
 # Food-Nonfood:  Treatment = Operational; Controls + Year & Deal FEs
 b2 <- lm.cluster(data = agriculture_food_nonfood, 
                  formula = assets ~ operational + level_fe*operational + 
-                   area_contracted + area_in_operation + deal_scope +
+                   area_contracted + area_in_operation + deal_scope + 
                    year_fe + deal_id,
                  cluster = 'deal_id')
-
 
 # Food-Nonfood: Treatment = Operational; Controls + Year & Country FEs + Investment Type
 b3 <- lm.cluster(data = agriculture_food_nonfood, 
@@ -157,8 +156,6 @@ b4 <- lm.cluster(data = agriculture_food_nonfood,
                    area_contracted + area_in_operation + deal_scope +
                    year_fe + deal_id,
                  cluster = 'deal_id')
-
-
 
 # Food-Nonfood: Treatment = Signed; Controls + No FEs
 b5 <- lm.cluster(data = agriculture_food_nonfood, 

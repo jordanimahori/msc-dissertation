@@ -79,6 +79,8 @@ lsla %>%
 
 
 
+
+
 # Histogram of Asset Predictions (Fixed)
 mdta %>%
   ggplot(aes(assets)) + 
@@ -109,7 +111,9 @@ ggplot(data = mdta) +
   geom_boxplot(aes(assets, year_fe)) +
   theme_light()
 
-
+ggplot(data = unfiltered_data) + 
+  geom_density(aes(assets, group=pre_2000, fill=pre_2000, alpha=.4)) +
+  theme_light()
 
 
 
