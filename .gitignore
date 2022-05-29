@@ -9,6 +9,7 @@ __pycache__*
 data/*
 *.npz
 *.csv
+*.RData
 
 # Ignoring scripts used for prototyping
 scratchpad.py
