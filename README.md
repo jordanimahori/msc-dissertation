@@ -7,10 +7,6 @@ This repository contains the code required to reproduce my thesis for the M.Sc. 
 **Acknowledgements:** Estimates of household durable assets were generated using model weights from [Yeh et al. (2020)](https://www.nature.com/articles/s41467-020-16185-w), which Christopher Yeh generously made available on [GitHub](https://github.com/chrisyeh96/africa_poverty_clean) along with other helpful functions which I greatly benefited from. Many of the functions for generating mosaics from Landsat imagery, exporting image patches, and processing the resulting TFRecords were based in significant part on those originally written by Chris and his team. All errors are of course my own.
 
 
-### Abstract
-Large-scale agriculture developments are an increasingly important feature of rural economies in sub-Saharan Africa, although their effect on local economic growth is both theoretically and empirically ambiguous. In this paper, I study the effect that these openings have on changes in household assets in the areas surrounding 617 sites across the continent. I combine data on land acquisitions with village-level estimates of household assets which I obtain using a convolutional neural network to extract features predictive of these assets from historical satellite imagery collected by NASA's Landsat program for the period between 1985 and 2021. I use the resulting panel to estimate fixed effects and event study models, where I find that industrial agriculture openings have a modest and positive effect on household assets in areas immediately adjacent to these developments. Using a small sample of non-agricultural land acquisitions, I further present evidence suggestive of significant heterogeneity in the effect of new industrial developments. While food and non-food agriculture continue to have a positive effect, land acquisitions for the purpose of energy, forestry and mining have a moderate negative effect. I conclude with a discussion of the potential as well as the concerns for using remote-sensing and deep-learning derived predictions to answer causal questions in economics.
-
-
 ## Overview
 
 **Complete instructions forthcoming.**
