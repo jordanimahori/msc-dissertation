@@ -5,17 +5,11 @@
 .idea/*
 __pycache__*
 
-# Ignoring anything in data/ directory and datasets
-data/*
-*.npz
-*.csv
-*.RData
-
 # Ignoring scripts used for prototyping
 scratchpad.py
 
 # Ignoring select directories
-testing/*
-outputs/ms_incountry/*
 outputs/extracted_features/*
+final_paper/*
+data/*
 
