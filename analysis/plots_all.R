@@ -13,7 +13,9 @@ library(sf)
 
 
 
+
 # ------------------------------ DATA -------------------------------
+
 
 # Read pre-cleaned data into memory
 lsla <- readRDS("data/intermediate/lsla.RData")
@@ -36,6 +38,13 @@ yearly_assets <- mdta %>%
   group_by(deal_id, level_fe) %>%
   mutate(growth = (mean_assets - lag(mean_assets, order_by = year))/mean_assets, 
          diff = mean_assets - lag(mean_assets, order_by = year))
+
+
+# Create dummy for whether a project was operational in 2000
+yearly_assets$operational_in_2000 <- as_factor(
+  ifelse(yearly_assets$year - yearly_assets$since_operational < 2000, 1, 0)
+  )
+
 
 
 
@@ -80,7 +89,6 @@ lsla %>%
 
 
 
-
 # Histogram of Asset Predictions (Fixed)
 mdta %>%
   ggplot(aes(assets)) + 
@@ -114,6 +122,8 @@ ggplot(data = mdta) +
 ggplot(data = unfiltered_data) + 
   geom_density(aes(assets, group=pre_2000, fill=pre_2000, alpha=.4)) +
   theme_light()
+
+
 
 
 
@@ -211,7 +221,6 @@ yearly_assets %>%
 
 
 
-
 # Fitted Linear of Mean Assets, by Level
 ggplot(data = yearly_assets, aes(x = year, y = mean_assets, group=level_fe)) +
   geom_smooth(method = 'lm', formula = y ~ x) + 
@@ -240,8 +249,9 @@ yearly_assets %>%
 yearly_assets %>% 
   filter(year >= 2000 & is.na(operational) == FALSE & level_fe == 0) %>%
   ggplot(aes(x = year, y = mean_assets)) +
-  geom_smooth(aes(group = operational, colour = operational), method = 'loess', formula = y ~ x) + 
+  geom_smooth(aes(group = operational_in_2000, colour = operational_in_2000), method = 'lm', formula = y ~ x) + 
   theme_light()
+
 
 
 
@@ -281,6 +291,7 @@ yearly_assets %>%
 
 
 
+
 # Assets In Current Year Compared to Lagged Assets, By Year, Level = 0; Unfiltered
 unfiltered_data %>%
   filter(level_fe == 0, year != 1985) %>%
@@ -299,6 +310,8 @@ unfiltered_data %>%
 
 
 
+
+
 # Assets In Current Year Compared to Lagged Assets, By Year, Level = 0; Windsorized
 mdta %>%
   filter(level_fe == 0, year != 1985) %>%
@@ -314,6 +327,10 @@ mdta %>%
   geom_point(alpha = 0.5) +
   facet_grid(~ post_2003) +
   theme_light()
+
+
+
+
 
 
 
@@ -346,39 +363,5 @@ ggplot(areas) +
   coord_sf() +
   theme_light()
   
-  
 
-# --------------------------- NOTES ---------------------------------
-
-# Asset wealth is decreasing, unless we only look at the period after 2000 in 
-# which case it is increasing modestly. Should we trust that? Fits somewhat 
-# with the historical evidence suggesting a decline in living standards (check 
-# if that's how paper interprets it) but also likely that Landsat 5 systematically 
-# difference causing issues. Significant heteroskedasticity suggests this is more
-# plausible. 
-
-# Increase of asset wealth driven primarily by Level 0, and Level 1 to a lesser
-# extent. Show this with regression. 
-
-# Need to check robustness against Urban Areas
-
-# Need to look into strangely high rates of growth and winsorize. Some > 200%... 
-# check max(yearly_assets$growth, na.rm=TRUE) and min(yearly_assets$growth, na.rm=TRUE)
-
-# There are unusual jumps in assets on the order of 1-2 pts on the index...
-
-# No real differences in overall growth rates or changes in absolute values of 
-# assets, which is suggestive of limited effects on growth.
-
-# Perhaps story is one of immediate growth, followed by slowing growth. As plots
-# suggest.
-
-# We see growth accelerate after signing, and rapid growth in the period 
-# immediately preceeding operational. 
-
-# Check if signed conditional on operational has effect.
-
-# QUESTION: For extreme values, should I winsorize or drop the deal_id, year 
-# combinations? Assume that extreme results are algorithm failing and thus 
-# should drop (and worry!).
 
