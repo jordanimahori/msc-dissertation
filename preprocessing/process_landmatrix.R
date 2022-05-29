@@ -30,14 +30,15 @@ filepaths = list.files("./data/raw/landmatrix/", pattern=".csv")
 datasets = list()
 
 for (file in filepaths) {
-  datasets[[gsub(".csv", "", file)]] <- read_delim(paste("data/raw/landmatrix/", file, sep=""), 
-                                                   show_col_types=FALSE)   #(1)
+  datasets[[gsub(".csv", "", file)]] <- read_delim(
+    paste("data/raw/landmatrix/", file, sep=""), show_col_types=FALSE)   #(1)
 }
 
 
 # GeoJSON data on land acquisitions (Source: LandMatrix)
 locations <- st_read("./data/raw/landmatrix/locations.geojson", quiet=TRUE)
 areas <- st_read("./data/raw/landmatrix/areas.geojson", quiet=TRUE)
+
 
 
 
@@ -202,7 +203,7 @@ lsla$staples <- as_factor(ifelse(str_detect(lsla$crop_type, pattern = "(Rice)|(W
 lsla$investment_type[lsla$rubber == '1'] <- "Non-food"
 
 # Reclassify Palm Oil Plantations as Food Agriculture
-lsla$investment_type[lsla$oil_palm == '1'] <- "Food"
+lsla$investment_type[lsla$palm_oil == '1'] <- "Food"
 
 
 # Manually reclassify investment_type to inferred type based on crop type
@@ -233,9 +234,6 @@ lsla$area_contracted[lsla$area_contracted == 0] <- NA
 
 
 
-
-
-
 # ---------------------- CLEAN GEOJSON DATA ----------------------------
 # LandMatrix provides data as both GeoJSON and CSV. They are slightly different 
 # from each other, although both contain the same underlying data. I clean it here
@@ -254,7 +252,7 @@ locations <- locations %>%
 locations <- locations %>%
   group_by(deal_id) %>%
   group_modify(~ {
-    x = mean(st_coordinates(.x)[,1])           # LOGIC CAN BE IMPROVED BY NOT INCLUDING APPROX LOCATION IF OTHERS ARE AVAILABLE
+    x = mean(st_coordinates(.x)[,1])           
     y = mean(st_coordinates(.x)[,2])
     data.frame(lon = x, lat = y)
   }) %>% st_as_sf(coords=c("lon", "lat"), crs=4326)
@@ -280,6 +278,8 @@ lsla %>%
   write_csv("./data/intermediate/earthengine_locs.csv")
 
 
+
+
 # ------------------------------ SAVE ---------------------------------
 
 
@@ -290,23 +290,16 @@ saveRDS(areas, file="data/intermediate/areas.RData")
 
 
 
-# ---------------------------- FOOTNOTES -------------------------------
 
-# (1) Some problems with data consistency in unused variables. 
-# See: problems(deals_tabular)
-
+# ---------------------------- NOTES -------------------------------
 
 # The GeoJSON and CVS files contain the same observations, but the number of 
 # duplicates in each is different, which results in a different number of 
 # observations.
 
-# There are duplicates in the areas as well, but that's more complicated to 
-# deal with. There are 190 distinct entries.
-
 # deal_size and size_under_contract are identical except for 10 entries where 
 # size_under_contract is implausibly zero. I therefore drop size_under_contract.
 
-#### Some contracts were later cancelled. I still need to extract the cancelled
-#### date if that is important to me.
-
-### Check what warning messages about discarded information is about (not urgent)
+# TODO: 
+# - Look into whether I can extract any more years operational 
+# - Look into whether I can improve logic for dealing with multiple locations

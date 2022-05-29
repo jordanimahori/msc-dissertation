@@ -4,20 +4,18 @@
 # model, and data on large scale land acquisitions from the Land Matrix. 
 
 
-# It also creates an additional dataset named 'robust' which removes outliers 
-# which have much higher than expected changes in asset wealth, or which have 
-# asset wealth of 3.13315. 
-
-
 
 # ----------------------------- ENVIRONMENT ----------------------------
+
+
 rm(list = ls())
 setwd("~/Projects/Dissertation/agro-welfare")
 
 library(dplyr)
+library(tidyr)
 library(readr)
 library(forcats)
-library(assertr)
+library(zoo)
 
 
 
@@ -26,9 +24,43 @@ library(assertr)
 # Load Data
 asset_predictions <- read_csv('data/asset_predictions.csv')
 lsla <- readRDS('data/intermediate/lsla.RData')
+institutions <- read_csv('data/raw/country_indicators.csv')
+country_to_code <- read_csv('data/intermediate/country_to_code.csv')
 
-# Merge Asset Predictions and Land Aquisions 
+# Merge Asset Predictions and Land Acquisions 
 mdta <- inner_join(asset_predictions, lsla, by='deal_id')
+
+# Add country codes to master data
+mdta <- left_join(mdta, country_to_code, by='country')
+
+
+
+# Pivot Institutions Data to be tidy
+institutions <- institutions %>% 
+  filter(Indicator %in% c("Property rights score", "Business freedom score", 
+                          "Investment freedom score", "Government Integrity score"))
+
+institutions <- pivot_longer(institutions, cols = `1995`:`2021`, 
+                             names_to="year", values_to="score")
+institutions <- pivot_wider(institutions, id_cols = c(`Country ISO3`, `year`), 
+                            names_from=`Indicator`, values_from=`score`)
+institutions$year <- as.numeric(institutions$year)
+
+# Infer Missing Values via Linear Interpolation
+institutions <- institutions %>% 
+  filter(`Country ISO3` %in% country_to_code$country_code) %>%
+  group_by(`Country ISO3`) %>%
+  mutate(property_rights = na.approx(`Property rights score`, na.rm=FALSE),
+         business_freedom = na.approx(`Business freedom score`, na.rm=FALSE), 
+         investment_freedom = na.approx(`Investment freedom score`, na.rm=FALSE),
+         government_integrity = na.approx(`Government Integrity score`, na.rm=FALSE)) %>%
+  rename(country_code = `Country ISO3`) %>%
+  ungroup()
+
+
+# Merge Institutions Data into Master Data
+mdta <- left_join(mdta, institutions, by=c("country_code", "year"))
+
 
 
 
@@ -41,13 +73,7 @@ mdta$operational <- as_factor(as.integer(mdta$year >= mdta$year_operational))
 mdta$abandoned <- as_factor(as.integer(mdta$year >= mdta$year_abandoned))
 
 
-# Construct Years Since Signed/Active/Closed Variables
-mdta$since_signed <- mdta$year - mdta$year_signed
-mdta$since_operational <- mdta$year - mdta$year_operational
-mdta$since_abandoned <- mdta$year - mdta$year_abandoned
-
-
-# Construct Factor Variables
+# Coerce Variables to Factor
 mdta$year_fe <- as_factor(mdta$year)
 mdta$level_fe <- as_factor(mdta$level)
 mdta$country <- as_factor(mdta$country)
@@ -57,6 +83,11 @@ mdta$deal_id <- as_factor(mdta$deal_id)
 # Create Period Dummies
 mdta$pre_2000 <- as_factor(ifelse(mdta$year < 2000, 1, 0))
 mdta$post_2003 <- as_factor(ifelse(mdta$year >= 2003, 1, 0))
+
+
+# Create Dummies for Below Median Property Rights & Institutions
+mdta$low_property_rights <- ifelse(mdta$property_rights < 30, 1, 0)
+mdta$low_government_integrity <- ifelse(mdta$government_integrity < 25, 1, 0)
 
 
 # Create Lagged Values of Assets
@@ -86,6 +117,34 @@ mdta$diff_lag <- mdta$assets - mdta$assets_lag_1
 mdta$diff_lead <- mdta$assets - mdta$assets_lead_1
 
 
+# Construct Years Since Signed/Active/Closed Variables
+mdta$since_signed <- mdta$year - mdta$year_signed
+mdta$since_operational <- mdta$year - mdta$year_operational
+mdta$since_abandoned <- mdta$year - mdta$year_abandoned
+
+
+# Create lag and lead dummies for the event study model
+mdta$es_lag2_signed <- ifelse(mdta$since_signed == -2, 1, 0)
+mdta$es_lag3_signed <- ifelse(mdta$since_signed == -3, 1, 0)
+mdta$es_lagplus4_signed <- ifelse(mdta$since_signed < -3, 1, 0)
+
+mdta$es_lead0_signed <- ifelse(mdta$since_signed == 0, 1, 0)
+mdta$es_lead1_signed <- ifelse(mdta$since_signed == 1, 1, 0)
+mdta$es_lead2_signed <- ifelse(mdta$since_signed == 2, 1, 0)
+mdta$es_lead3_signed <- ifelse(mdta$since_signed == 3, 1, 0)
+mdta$es_leadplus4_signed <- ifelse(mdta$since_signed > 3, 1, 0)
+
+mdta$es_lag2_operational <- ifelse(mdta$since_operational == -2, 1, 0)
+mdta$es_lag3_operational <- ifelse(mdta$since_operational == -3, 1, 0)
+mdta$es_lagplus4_operational <- ifelse(mdta$since_operational < -3, 1, 0)
+
+mdta$es_lead0_operational <- ifelse(mdta$since_operational == 0, 1, 0)
+mdta$es_lead1_operational <- ifelse(mdta$since_operational == 1, 1, 0)
+mdta$es_lead2_operational <- ifelse(mdta$since_operational == 2, 1, 0)
+mdta$es_lead3_operational <- ifelse(mdta$since_operational == 3, 1, 0)
+mdta$es_leadplus4_operational <- ifelse(mdta$since_operational > 3, 1, 0)
+
+
 
 
 # ------------ IDENTIFY AND REMOVE UNUSUAL OBSERVATIONS --------------
@@ -95,22 +154,17 @@ mdta$diff_lead <- mdta$assets - mdta$assets_lead_1
 unfiltered_data <- mdta
 
 
-# Identify observations which inexplicably have assets of 3.131557375, or which 
-# grew by more than 1 on the asset index scale since the subsequent period.
-outliers <- mdta %>%
-  filter((assets > 3.1315 & assets < 3.1316) | (diff < -1) | (diff > 1))
+# Identify observations where assets changed by more than 1.0 between adjacent periods.
+outliers <- unfiltered_data %>%
+  filter((diff_lag < -1 | diff_lag > 1 | diff_lead < -1 | diff_lead > 1))
 
 
-# Create dataset that drops all observations in the deal_id & year of an outlier
-robust <- mdta %>%
-  anti_join(outliers, by=c('deal_id', 'year'))
-
-
-# Drop outliers from master dataset
-mdta <- mdta %>%
-  filter(!((diff_lag < -1) | (diff_lag > 1) | 
-             (diff_lead < -1) | (diff_lead > 1))) %>%  # Remove asset changes < 1
+# Remove all tiles for which the asset predictions changed by more than 1, and winsorize
+mdta <- unfiltered_data %>%
+  filter(!((diff_lag < -1 | diff_lag > 1) & !is.na(diff_lag)) | 
+           !((diff_lead < -1 | diff_lead > 1) & !is.na(diff_lead))) %>%  # Remove asset changes < 1
   filter(assets > -1.874129 & assets < 1.452251)  # Remove the top and bottom 0.05%
+
 
 
 
@@ -120,6 +174,5 @@ mdta <- mdta %>%
 # Write datasets
 write_rds(unfiltered_data, 'data/robustness/unfiltered_data.RData')
 write_rds(outliers, 'data/robustness/outliers.RData')
-write_rds(robust, 'data/robustness/robust.RData')
 write_rds(mdta, 'data/mdta.RData')
 
