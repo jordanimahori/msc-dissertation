@@ -68,6 +68,10 @@ Next, for each identified acquisition, I generate cloud-free mosaics using image
 
 Now, for each land acquisition and period in the study, I extract an area with a radius of 20km centred on the land acquisition centroid, which is further subdivided into a grid of 5x5 tiles each measuring 255x255 pixels across. This is done in `export_images.py`. While it would have been preferable to specify the dimensions of the study area in pixels, limitations in Earth Engine require that the area to be extracted be measured in meters, and consequently 20km was chosen experimentally as the diameter that most closely approximates the desired dimensions for all sites in my study (the spatial resolution of 30m is only true at the Equator). This introduces some noise in the placement of the tiles. I then export these tiles in TFRecord format. Earth Engine groups all tiles drawn from the same image together, so I split these apart into individual TFRecords for compatibility with `batcher.py`, as well as add a few features such as tile characteristics in `process_tfrecords.py`. 
 
+<p align="center">
+<img width="600" alt="figure_1" src="https://user-images.githubusercontent.com/40173965/192405404-986e2ac0-8e2c-4d0d-a852-1ad035bace07.png">
+</p>
+
 Finally, I obtain asset predictions by first using the model developed by Yeh et al. to extract 512-dimension feature vectors from each tile and obtain asset predictions by weighing each feature using the weights from my linear model (discussed below). This is accomplished in `extract_features.py` and `predict_assets.py` respectively. In `merge_and_validate.R`, asset predictions are associated with tile, acquisition and country characteristics for every period in the study to create a panel where the tile is the unit of observation.
 
 
