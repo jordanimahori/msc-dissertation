@@ -22,7 +22,7 @@ library(zoo)
 # ------------------- MERGE DATASETS ----------------------
 
 # Load Data
-asset_predictions <- read_csv('data/asset_predictions.csv')
+asset_predictions <- read_csv('data/intermediate/asset_predictions.csv')
 lsla <- readRDS('data/intermediate/lsla.RData')
 institutions <- read_csv('data/raw/country_indicators.csv')
 country_to_code <- read_csv('data/intermediate/country_to_code.csv')

@@ -12,6 +12,7 @@ setwd("~/Projects/Dissertation/agro-welfare")
 library(sandwich)
 library(lmtest)
 library(forcats)
+library(dplyr)
 library(stargazer)
 
 
@@ -22,7 +23,6 @@ library(stargazer)
 
 # Master Data
 mdta <- readRDS("data/mdta.RData")
-robust <- readRDS("data/robustness/robust.RData")
 
 # Reduced Sample - All Agriculture 
 agriculture <- filter(mdta, investment_type == 'Food' |
@@ -101,7 +101,7 @@ a6_cluster_se <- coeftest(a6, vcov=vcovCL, cluster=~deal_id)
 # Export models in a single table.
 stargazer(a1_cluster_se, a2_cluster_se, a3_cluster_se, a4_cluster_se, 
           a5_cluster_se, a6_cluster_se, 
-          type="text",
+          type="latex",
           title="Main Regression Results",
           font.size="scriptsize", 
           keep=c("signed", "operational", "level_fe", "property_rights", 
@@ -216,7 +216,7 @@ h8_cluster_se <- coeftest(h8, vcov=vcovCL, cluster=~deal_id)
 # Export models in a single table.
 stargazer(h1_cluster_se, h2_cluster_se, h3_cluster_se, h4_cluster_se, 
           h5_cluster_se, h6_cluster_se, h7_cluster_se, h8_cluster_se,
-          type="text",
+          type="latex",
           title="Heterogeneity Analysis Results",
           font.size="scriptsize", 
           keep=c("signed", "signed_1", "signed_2", "signed_3", 
@@ -308,7 +308,7 @@ r6_cluster_se <- coeftest(r6, vcov=vcovCL, cluster=~deal_id)
 # Export models in a single table.
 stargazer(r1_cluster_se, r3_cluster_se, r5_cluster_se, 
           r2_cluster_se, r4_cluster_se, r6_cluster_se, 
-          type="text",
+          type="latex",
           title="Reduced Sample Rebustness Tests Results",
           font.size="scriptsize", 
           keep=c("signed", "operational", "level_fe", "property_rights", 
@@ -423,8 +423,8 @@ p8_cluster_se <- coeftest(p8, vcov=vcovCL, cluster=~deal_id)
 
 
 # Export models in a single table.
-stargazer(p1, p2, p3, p4, p5, p6, p7, p8,
-          type="text",
+stargazer(p1_cluster_se, p2_cluster_se, p3_cluster_se, p4_cluster_se, p5_cluster_se, p6_cluster_se, p7_cluster_se, p8_cluster_se,
+          type="latex",
           title="Placebo Test Results",
           font.size="scriptsize", 
           keep=c("signed", "signed_1", "signed_2", "signed_3", 

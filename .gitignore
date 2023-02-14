@@ -13,3 +13,5 @@ outputs/extracted_features/*
 final_paper/*
 data/*
 
+.Rhistory
+rosm.cache/
