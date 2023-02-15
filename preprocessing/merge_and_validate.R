@@ -33,7 +33,9 @@ mdta <- inner_join(asset_predictions, lsla, by='deal_id')
 # Add country codes to master data
 mdta <- left_join(mdta, country_to_code, by='country')
 
-
+# Rename years to year
+mdta <- mdta %>%
+  rename(year = years)
 
 # Pivot Institutions Data to be tidy
 institutions <- institutions %>% 
